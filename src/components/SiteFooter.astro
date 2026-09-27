@@ -1,0 +1,101 @@
+---
+import Logo from './Logo.astro';
+import { footer, release, site } from '../data/site';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="container grid">
+    <div class="brand">
+      <Logo id="logo-footer" />
+      <p>{site.tagline}.</p>
+      <p class="release">
+        FastMDXplora <a href={`${release.repository}/releases/tag/${release.tag}`}>{release.version}</a> on conda-forge
+      </p>
+    </div>
+    {footer.map((column) => (
+      <nav aria-label={column.title}>
+        <h2>{column.title}</h2>
+        <ul>
+          {column.links.map((link) => (
+            <li>
+              <a href={link.href}>{link.label}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    ))}
+  </div>
+  <div class="container legal">
+    <p>
+      &copy; {year} {site.name}
+    </p>
+    <p>FastMDXplora is open-source software under the {release.software.license} license.</p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    border-top: 1px solid var(--border);
+    background: var(--bg-sunken);
+    padding-block: 64px 32px;
+    font-size: 0.925rem;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 2fr repeat(3, 1fr);
+    gap: 2.5rem;
+  }
+  .brand p {
+    margin-top: 1rem;
+    color: var(--fg-muted);
+    max-width: 30ch;
+  }
+  .brand .release {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--fg-subtle);
+  }
+  h2 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    margin-bottom: 1rem;
+  }
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.6rem;
+  }
+  a {
+    color: var(--fg-muted);
+    text-decoration: none;
+  }
+  a:hover {
+    color: var(--fg);
+  }
+  .legal {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem 2rem;
+    color: var(--fg-subtle);
+    font-size: 0.85rem;
+  }
+  @media (max-width: 760px) {
+    .grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .brand {
+      grid-column: 1 / -1;
+    }
+  }
+</style>
