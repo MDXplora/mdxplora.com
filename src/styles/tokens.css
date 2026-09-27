@@ -2,7 +2,8 @@
  * Design tokens.
  *
  * Both themes are defined here once, so a colour changed here changes
- * everywhere.
+ * everywhere. Text colours keep at least 4.5:1 contrast against every
+ * background they sit on (WCAG AA); the accessibility tests check it.
  */
 
 :root {
@@ -35,7 +36,8 @@
   --border-strong: #2d3b61;
   --fg: #eef1f8;
   --fg-muted: #a5aec8;
-  --fg-subtle: #737d9c;
+  --fg-subtle: #838cab;
+  --positive: #22c3b5;
   --link: #8fb0ff;
   --accent: #6f97ff;
   --accent-fg: #06122f;
@@ -57,7 +59,8 @@
   --border-strong: #cbd2e3;
   --fg: #0b1122;
   --fg-muted: #4b5573;
-  --fg-subtle: #6b7493;
+  --fg-subtle: #5f6886;
+  --positive: #0e7a71;
   --link: #2451d6;
   --accent: #2451d6;
   --accent-fg: #ffffff;

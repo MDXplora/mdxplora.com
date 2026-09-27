@@ -43,9 +43,21 @@ jobs:
           CI: ${{ env.BANNED_TERMS != '' && 'true' || '' }}
 
       - run: npx playwright install --with-deps chromium
+      # Includes the accessibility checks (WCAG 2.2 AA, every page, both themes).
       - run: npm test
         env:
           CI: 'true'
+
+      # Speed, accessibility, best practice and SEO scores; thresholds in lighthouserc.json.
+      - name: Lighthouse
+        run: npm run lighthouse
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: lighthouse
+          path: .lighthouseci/reports
+          if-no-files-found: ignore
 
       - uses: actions/upload-pages-artifact@v4
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'

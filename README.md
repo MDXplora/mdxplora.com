@@ -17,8 +17,13 @@ Before pushing:
 npm run format
 PUBLIC_FORMSPREE_ID=<form id> npm run build
 npm run check        # types, internal links, banned terms
-npm test             # browser tests against the build
+npm test             # browser and accessibility tests against the build
+npm run lighthouse   # speed, accessibility, best practice and SEO scores
 ```
+
+The accessibility tests check every page in both themes against WCAG 2.2 AA with axe. Lighthouse runs each page three
+times on a simulated phone and fails below the scores in `lighthouserc.json`: 90 for speed, 100 for the rest. CI keeps
+its reports as a build artifact named `lighthouse`.
 
 ## Link preview images
 

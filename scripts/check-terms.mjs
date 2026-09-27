@@ -15,7 +15,7 @@ import { homedir } from 'node:os';
 import { extname, join, relative, resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
-const SKIP = new Set(['node_modules', '.git', '.astro', 'test-results', 'playwright-report']);
+const SKIP = new Set(['node_modules', '.git', '.astro', 'test-results', 'playwright-report', '.lighthouseci']);
 const TEXT = new Set([
   '.astro',
   '.css',
