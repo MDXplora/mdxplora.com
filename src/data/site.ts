@@ -7,6 +7,8 @@ export const site = {
   // Set as a repository variable for the deploy (see README). A production
   // build without it fails, so a form that cannot send is never published.
   formspreeId: import.meta.env.PUBLIC_FORMSPREE_ID as string | undefined,
+  // Cloudflare Web Analytics site token. Unset, the site counts nothing and says so.
+  analyticsToken: import.meta.env.PUBLIC_CF_ANALYTICS_TOKEN as string | undefined,
 } as const;
 
 // The software MDXplora computes with, named only where a user must cite it.

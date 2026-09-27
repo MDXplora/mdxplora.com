@@ -49,6 +49,13 @@ injected code does not run; the form may send only to Formspree. A browser test 
 inline code wholesale, or blocks anything the site itself uses. When adding a third-party script, image or form
 endpoint, add its host to the policy in the same change.
 
+## Visit counts
+
+With `PUBLIC_CF_ANALYTICS_TOKEN` set, every page loads Cloudflare Web Analytics, which uses no cookies and stores nothing
+on the visitor's device. The privacy page describes it only when it is on, and the security policy allows its script
+and endpoint only then. It loads on `mdxplora.com` alone, so local previews, the browser tests and Lighthouse are never
+counted. To turn it off, delete the variable and rerun the workflow.
+
 ## Dependencies
 
 Dependabot proposes updates every Monday (`.github/dependabot.yml`): minor and patch updates together in one pull
@@ -58,16 +65,17 @@ by hand.
 
 ## Configuration
 
-| Where                        | Name                  | What                                                                     |
-| ---------------------------- | --------------------- | ------------------------------------------------------------------------ |
-| Repository variable          | `PUBLIC_FORMSPREE_ID` | The Formspree form ID. A build without it, or with a placeholder, fails. |
-| Repository secret            | `BANNED_TERMS`        | The banned-terms list, one term per line.                                |
-| Dependabot secret            | `BANNED_TERMS`        | The same list, so Dependabot's pull requests are checked too.            |
-| Settings, Pages              | Source                | GitHub Actions                                                           |
-| Settings, Pages              | Custom domain         | `mdxplora.com`, with Enforce HTTPS                                       |
-| Organization settings, Pages | Verified domains      | `mdxplora.com`, so no other account can claim it                         |
-| Formspree, form settings     | reCAPTCHA             | Off; the form submits in the page and has a honeypot                     |
-| Formspree, form settings     | Restrict to domain    | `mdxplora.com`                                                           |
+| Where                        | Name                        | What                                                                     |
+| ---------------------------- | --------------------------- | ------------------------------------------------------------------------ |
+| Repository variable          | `PUBLIC_FORMSPREE_ID`       | The Formspree form ID. A build without it, or with a placeholder, fails. |
+| Repository variable          | `PUBLIC_CF_ANALYTICS_TOKEN` | Optional. Cloudflare Web Analytics token; unset, nothing is counted.     |
+| Repository secret            | `BANNED_TERMS`              | The banned-terms list, one term per line.                                |
+| Dependabot secret            | `BANNED_TERMS`              | The same list, so Dependabot's pull requests are checked too.            |
+| Settings, Pages              | Source                      | GitHub Actions                                                           |
+| Settings, Pages              | Custom domain               | `mdxplora.com`, with Enforce HTTPS                                       |
+| Organization settings, Pages | Verified domains            | `mdxplora.com`, so no other account can claim it                         |
+| Formspree, form settings     | reCAPTCHA                   | Off; the form submits in the page and has a honeypot                     |
+| Formspree, form settings     | Restrict to domain          | `mdxplora.com`                                                           |
 
 DNS for GitHub Pages, with the records set to DNS only (not proxied) so GitHub can issue the certificate:
 

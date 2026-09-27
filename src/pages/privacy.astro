@@ -1,6 +1,8 @@
 ---
 import Base from '../layouts/Base.astro';
 import { site } from '../data/site';
+
+const counted = Boolean(site.analyticsToken);
 ---
 
 <Base title="Privacy" description="What this site collects, and what it does not.">
@@ -14,11 +16,44 @@ import { site } from '../data/site';
 
   <section class="section">
     <div class="container prose">
-      <h2>No tracking</h2>
-      <p>
-        This site sets no cookies and runs no analytics, advertising or tracking scripts. Its fonts are served from this
-        site, not from a third party.
-      </p>
+      {counted ? (
+        <>
+          <h2>No cookies, no tracking</h2>
+          <p>
+            This site sets no cookies and runs no advertising or tracking scripts. It counts visits without identifying
+            you, as described below. Its fonts are served from this site, not from a third party.
+          </p>
+        </>
+      ) : (
+        <>
+          <h2>No tracking</h2>
+          <p>
+            This site sets no cookies and runs no analytics, advertising or tracking scripts. Its fonts are served from
+            this site, not from a third party.
+          </p>
+        </>
+      )}
+
+      {counted && (
+        <>
+          <h2>Visit counts</h2>
+          <p>
+            We count visits with <a href="https://www.cloudflare.com/web-analytics/">Cloudflare Web Analytics</a>, to
+            learn which pages are read and how quickly they load. When a page opens, your browser sends Cloudflare the
+            page address, the site that linked to it, its user agent (which names the browser, operating system and type
+            of device) and page loading times. Like any web request, this reaches Cloudflare with your IP address, from
+            which Cloudflare works out the country. We see only totals.
+          </p>
+          <p>
+            The counter stores nothing on your device.{' '}
+            <a href="https://blog.cloudflare.com/free-privacy-first-analytics-for-a-better-web/">Cloudflare states</a>{' '}
+            that it uses no cookies or local storage to track visitors and does not fingerprint them by IP address, user
+            agent or any other data. Its handling is described in the{' '}
+            <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare privacy policy</a>. Content blockers that
+            block <code>static.cloudflareinsights.com</code> stop the count entirely, and the site works the same.
+          </p>
+        </>
+      )}
 
       <h2>Your theme choice</h2>
       <p>

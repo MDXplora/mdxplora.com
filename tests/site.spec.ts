@@ -52,6 +52,52 @@ test('every page carries the security policy and nothing on it breaks the policy
   expect(violations).toEqual([]);
 });
 
+test('visits are counted only when configured, only on the live site, and the privacy page says which', async ({
+  page,
+}) => {
+  const beaconRequests: string[] = [];
+  page.on('request', (r) => r.url().includes('cloudflareinsights.com') && beaconRequests.push(r.url()));
+  await page.goto('/privacy/');
+  const loader = page.locator('script[data-token]');
+  const policy = (await page.locator('meta[http-equiv="content-security-policy"]').getAttribute('content')) ?? '';
+  const prose = page.locator('.prose');
+
+  if ((await loader.count()) === 0) {
+    expect(policy).not.toContain('cloudflareinsights');
+    await expect(prose).toContainText('runs no analytics');
+    await expect(prose).not.toContainText('Visit counts');
+  } else {
+    await expect(loader).toHaveAttribute('data-host', 'mdxplora.com');
+    expect(policy).toContain('https://static.cloudflareinsights.com/beacon.min.js');
+    expect(policy).toMatch(/connect-src [^;]*https:\/\/cloudflareinsights\.com/);
+    await expect(prose).toContainText('Visit counts');
+    await expect(prose).not.toContainText('runs no analytics');
+  }
+  // This test serves the site from localhost, which must never be counted.
+  await page.goto('/');
+  await page.waitForTimeout(300);
+  expect(beaconRequests).toEqual([]);
+  if ((await loader.count()) === 0) return;
+
+  // On the live domain (answered here from this build), the counter loads and the policy lets it report.
+  await page.route('https://mdxplora.com/**', async (route) =>
+    route.fulfill({ response: await page.request.get(new URL(route.request().url()).pathname) }),
+  );
+  await page.route('https://static.cloudflareinsights.com/**', (route) =>
+    route.fulfill({
+      contentType: 'text/javascript',
+      body: "fetch('https://cloudflareinsights.com/cdn-cgi/rum', { method: 'POST', body: document.currentScript.dataset.cfBeacon });",
+    }),
+  );
+  let reported = '';
+  await page.route('https://cloudflareinsights.com/**', async (route) => {
+    reported = route.request().postData() ?? '';
+    await route.fulfill({ status: 204 });
+  });
+  await page.goto('https://mdxplora.com/');
+  await expect.poll(() => reported).toContain('"token"');
+});
+
 test('each page has its own link preview image, matching its headline', async ({ page, request }) => {
   for (const path of pages) {
     await page.goto(path);

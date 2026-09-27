@@ -29,3 +29,18 @@ export const themeScript = `(() => {
     .querySelector('meta[name="theme-color"]')
     ?.setAttribute('content', theme === 'light' ? '#fafbfe' : '#070b16');
 })();`;
+
+/**
+ * Loads Cloudflare's visit counter, on the live site only, so local previews,
+ * the browser tests and Lighthouse runs are never counted. The token and the
+ * live host are read from the script element's own data attributes.
+ */
+export const counterScript = `(() => {
+  const own = document.currentScript;
+  if (!own || location.hostname !== own.dataset.host) return;
+  const beacon = document.createElement('script');
+  beacon.defer = true;
+  beacon.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+  beacon.dataset.cfBeacon = JSON.stringify({ token: own.dataset.token });
+  document.body.append(beacon);
+})();`;

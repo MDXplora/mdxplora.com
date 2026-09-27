@@ -9,7 +9,7 @@ import SiteHeader from '../components/SiteHeader.astro';
 import { cardFor } from '../data/cards';
 import { site } from '../data/site';
 import { iconVersion } from '../lib/icons';
-import { hashOf, themeScript } from '../lib/inline-scripts';
+import { counterScript, hashOf, themeScript } from '../lib/inline-scripts';
 
 interface Props {
   title?: string;
@@ -25,6 +25,21 @@ const imageAlt = `${site.name}: ${card.title}`;
 
 // Inline scripts run only if the security policy lists their hash (see astro.config.mjs).
 Astro.csp?.insertScriptHash(hashOf(themeScript));
+
+// Visit counting (Cloudflare Web Analytics), on only when a token is configured.
+const analytics = site.analyticsToken;
+if (analytics && (!/^[A-Za-z0-9_-]{16,64}$/.test(analytics) || /token|your|here|placeholder/i.test(analytics))) {
+  throw new Error(
+    `PUBLIC_CF_ANALYTICS_TOKEN is "${analytics}", which is not a Web Analytics token. Copy the token from the site's snippet in Cloudflare. See README.`,
+  );
+}
+if (analytics) {
+  Astro.csp?.insertScriptHash(hashOf(counterScript));
+  // The counter is a script from Cloudflare that reports to Cloudflare; the policy allows both, and only them.
+  Astro.csp?.insertScriptResource("'self'");
+  Astro.csp?.insertScriptResource('https://static.cloudflareinsights.com/beacon.min.js');
+  Astro.csp?.insertDirective('connect-src https://cloudflareinsights.com');
+}
 ---
 
 <!doctype html>
@@ -71,5 +86,6 @@ Astro.csp?.insertScriptHash(hashOf(themeScript));
       <slot />
     </main>
     <SiteFooter />
+    {analytics && <script is:inline data-token={analytics} data-host={site.domain} set:html={counterScript} />}
   </body>
 </html>
