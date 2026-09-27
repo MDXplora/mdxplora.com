@@ -41,17 +41,25 @@ at build time. The advisory concerns ZIP archives, which it never reads, and not
 kept in this repository. Locally it is read from `~/.config/mdxplora/banned-terms.txt` (one term per line, `#` for
 comments); in CI from the `BANNED_TERMS` secret. Matching ignores case and accents.
 
+## Dependencies
+
+Dependabot proposes updates every Monday (`.github/dependabot.yml`): minor and patch updates together in one pull
+request each for npm and for GitHub Actions, major updates one at a time, each release at least a week old. Merge once
+CI passes. Lighthouse CI runs through `npx` at the version pinned in `package.json`, outside the lockfile, and is updated
+by hand.
+
 ## Configuration
 
-| Where                        | Name                  | What                                                 |
-| ---------------------------- | --------------------- | ---------------------------------------------------- |
-| Repository variable          | `PUBLIC_FORMSPREE_ID` | The Formspree form ID. A build without it fails.     |
-| Repository secret            | `BANNED_TERMS`        | The banned-terms list, one term per line.            |
-| Settings, Pages              | Source                | GitHub Actions                                       |
-| Settings, Pages              | Custom domain         | `mdxplora.com`, with Enforce HTTPS                   |
-| Organization settings, Pages | Verified domains      | `mdxplora.com`, so no other account can claim it     |
-| Formspree, form settings     | reCAPTCHA             | Off; the form submits in the page and has a honeypot |
-| Formspree, form settings     | Restrict to domain    | `mdxplora.com`                                       |
+| Where                        | Name                  | What                                                          |
+| ---------------------------- | --------------------- | ------------------------------------------------------------- |
+| Repository variable          | `PUBLIC_FORMSPREE_ID` | The Formspree form ID. A build without it fails.              |
+| Repository secret            | `BANNED_TERMS`        | The banned-terms list, one term per line.                     |
+| Dependabot secret            | `BANNED_TERMS`        | The same list, so Dependabot's pull requests are checked too. |
+| Settings, Pages              | Source                | GitHub Actions                                                |
+| Settings, Pages              | Custom domain         | `mdxplora.com`, with Enforce HTTPS                            |
+| Organization settings, Pages | Verified domains      | `mdxplora.com`, so no other account can claim it              |
+| Formspree, form settings     | reCAPTCHA             | Off; the form submits in the page and has a honeypot          |
+| Formspree, form settings     | Restrict to domain    | `mdxplora.com`                                                |
 
 DNS for GitHub Pages, with the records set to DNS only (not proxied) so GitHub can issue the certificate:
 

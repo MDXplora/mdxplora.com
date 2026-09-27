@@ -1,0 +1,28 @@
+# Weekly dependency updates. Minor and patch updates arrive together in one pull
+# request per ecosystem; a major update gets its own. New releases wait a week
+# before they are proposed, so a bad release is usually withdrawn first.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    groups:
+      npm:
+        patterns: ['*']
+        update-types: [minor, patch]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ['*']
