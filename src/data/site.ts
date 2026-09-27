@@ -3,7 +3,7 @@ export const site = {
   tagline: 'From question to publishable molecular dynamics',
   support: 'Every study is reproducible, traceable and checked before it runs.',
   domain: 'mdxplora.com',
-  email: 'hello@mdxplora.com',
+  email: 'info@mdxplora.com',
   // Set as a repository variable for the deploy (see README). A production
   // build without it fails, so a form that cannot send is never published.
   formspreeId: import.meta.env.PUBLIC_FORMSPREE_ID as string | undefined,
