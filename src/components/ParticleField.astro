@@ -1,0 +1,280 @@
+---
+// A small Lennard-Jones fluid, integrated live behind the hero.
+//
+// Reduced units throughout (sigma = epsilon = mass = 1). Velocity Verlet with a
+// weak velocity-rescaling thermostat, periodic boundaries, cutoff 2.5 sigma.
+// Neighbours closer than 1.25 sigma are joined. Held near the critical
+// temperature, the fluid forms clusters that grow and break up.
+---
+
+<canvas class="particle-field" aria-hidden="true"></canvas>
+
+<script>
+  type Theme = { particle: string; bond: string };
+
+  const SIGMA_PX = 16; // one sigma on screen
+  const DENSITY = 0.35; // particles per sigma^2
+  const TEMPERATURE = 0.45; // close to the 2D critical point, so clusters form and dissolve
+  const DT = 0.004;
+  const SUBSTEPS = 3;
+  const CUTOFF = 2.5;
+  const BOND = 1.25;
+  const MAX_FORCE = 80;
+  const MAX_PARTICLES = 1600;
+
+  function colours(): Theme {
+    const style = getComputedStyle(document.documentElement);
+    return {
+      particle: style.getPropertyValue('--particle').trim() || '143, 176, 255',
+      bond: style.getPropertyValue('--bond').trim() || '34, 195, 181',
+    };
+  }
+
+  function start(canvas: HTMLCanvasElement) {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let theme = colours();
+    let n = 0;
+    let lx = 1;
+    let ly = 1;
+    let x = new Float64Array(0);
+    let y = new Float64Array(0);
+    let vx = new Float64Array(0);
+    let vy = new Float64Array(0);
+    let fx = new Float64Array(0);
+    let fy = new Float64Array(0);
+    // Cell list: cells at least one cutoff wide, so neighbours are in the 3 x 3 block.
+    let cx = 1;
+    let cy = 1;
+    let head = new Int32Array(0);
+    let next = new Int32Array(0);
+    let pointer: { x: number; y: number } | null = null;
+    let running = false;
+    let frame = 0;
+    const cut2 = CUTOFF * CUTOFF;
+
+    function setup() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.max(1, Math.round(rect.width * dpr));
+      canvas.height = Math.max(1, Math.round(rect.height * dpr));
+      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+      lx = Math.max(rect.width / SIGMA_PX, 3 * CUTOFF);
+      ly = Math.max(rect.height / SIGMA_PX, 3 * CUTOFF);
+      n = Math.min(MAX_PARTICLES, Math.max(24, Math.round(lx * ly * DENSITY)));
+      x = new Float64Array(n);
+      y = new Float64Array(n);
+      vx = new Float64Array(n);
+      vy = new Float64Array(n);
+      fx = new Float64Array(n);
+      fy = new Float64Array(n);
+      cx = Math.max(3, Math.floor(lx / CUTOFF));
+      cy = Math.max(3, Math.floor(ly / CUTOFF));
+      head = new Int32Array(cx * cy);
+      next = new Int32Array(n);
+      // A jittered lattice, so no two particles start overlapping.
+      const cols = Math.ceil(Math.sqrt((n * lx) / ly));
+      const rows = Math.ceil(n / cols);
+      for (let i = 0; i < n; i++) {
+        x[i] = ((i % cols) + 0.5 + (Math.random() - 0.5) * 0.3) * (lx / cols);
+        y[i] = (Math.floor(i / cols) + 0.5 + (Math.random() - 0.5) * 0.3) * (ly / rows);
+        vx[i] = gaussian() * Math.sqrt(TEMPERATURE);
+        vy[i] = gaussian() * Math.sqrt(TEMPERATURE);
+      }
+      removeDrift();
+      forces();
+    }
+
+    function gaussian() {
+      return Math.sqrt(-2 * Math.log(Math.random() + 1e-12)) * Math.cos(2 * Math.PI * Math.random());
+    }
+
+    function removeDrift() {
+      let sx = 0;
+      let sy = 0;
+      for (let i = 0; i < n; i++) {
+        sx += vx[i];
+        sy += vy[i];
+      }
+      for (let i = 0; i < n; i++) {
+        vx[i] -= sx / n;
+        vy[i] -= sy / n;
+      }
+    }
+
+    function binParticles() {
+      head.fill(-1);
+      for (let i = 0; i < n; i++) {
+        const c = Math.min(cx - 1, Math.floor((x[i] / lx) * cx)) + cx * Math.min(cy - 1, Math.floor((y[i] / ly) * cy));
+        next[i] = head[c];
+        head[c] = i;
+      }
+    }
+
+    // Calls visit(i, j, dx, dy, r2) once for every pair closer than the cutoff.
+    function pairs(visit: (i: number, j: number, dx: number, dy: number, r2: number) => void) {
+      for (let a = 0; a < cx; a++) {
+        for (let b = 0; b < cy; b++) {
+          for (let i = head[a + cx * b]; i >= 0; i = next[i]) {
+            for (let da = -1; da <= 1; da++) {
+              for (let db = -1; db <= 1; db++) {
+                const c = ((a + da + cx) % cx) + cx * ((b + db + cy) % cy);
+                for (let j = head[c]; j >= 0; j = next[j]) {
+                  if (j <= i) continue;
+                  let dx = x[i] - x[j];
+                  let dy = y[i] - y[j];
+                  dx -= lx * Math.round(dx / lx);
+                  dy -= ly * Math.round(dy / ly);
+                  const r2 = dx * dx + dy * dy;
+                  if (r2 < cut2 && r2 > 1e-6) visit(i, j, dx, dy, r2);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    function forces() {
+      fx.fill(0);
+      fy.fill(0);
+      binParticles();
+      pairs((i, j, dx, dy, r2) => {
+        const inv2 = 1 / r2;
+        const inv6 = inv2 * inv2 * inv2;
+        const f = Math.min(MAX_FORCE, 24 * inv2 * inv6 * (2 * inv6 - 1));
+        fx[i] += f * dx;
+        fy[i] += f * dy;
+        fx[j] -= f * dx;
+        fy[j] -= f * dy;
+      });
+      if (!pointer) return;
+      // A soft repulsive probe where the pointer is.
+      for (let i = 0; i < n; i++) {
+        let dx = x[i] - pointer.x;
+        let dy = y[i] - pointer.y;
+        dx -= lx * Math.round(dx / lx);
+        dy -= ly * Math.round(dy / ly);
+        const r2 = dx * dx + dy * dy;
+        if (r2 < 36) {
+          const g = 12 * Math.exp(-r2 / 8);
+          fx[i] += g * dx;
+          fy[i] += g * dy;
+        }
+      }
+    }
+
+    function step() {
+      const half = 0.5 * DT;
+      for (let i = 0; i < n; i++) {
+        vx[i] += half * fx[i];
+        vy[i] += half * fy[i];
+        x[i] = (((x[i] + DT * vx[i]) % lx) + lx) % lx;
+        y[i] = (((y[i] + DT * vy[i]) % ly) + ly) % ly;
+      }
+      forces();
+      let kinetic = 0;
+      for (let i = 0; i < n; i++) {
+        vx[i] += half * fx[i];
+        vy[i] += half * fy[i];
+        kinetic += vx[i] * vx[i] + vy[i] * vy[i];
+      }
+      // Weak coupling to the target temperature (2 degrees of freedom each).
+      const current = kinetic / (2 * n);
+      const scale = Math.sqrt(1 + 0.02 * (TEMPERATURE / Math.max(current, 1e-6) - 1));
+      for (let i = 0; i < n; i++) {
+        vx[i] *= scale;
+        vy[i] *= scale;
+      }
+    }
+
+    function draw() {
+      ctx!.clearRect(0, 0, lx * SIGMA_PX, ly * SIGMA_PX);
+      ctx!.lineWidth = 1;
+      const bond2 = BOND * BOND;
+      binParticles();
+      pairs((i, j, _dx, _dy, r2) => {
+        if (r2 > bond2) return;
+        // Bonds across the periodic edge are not drawn.
+        if (Math.abs(x[i] - x[j]) > BOND || Math.abs(y[i] - y[j]) > BOND) return;
+        const a = Math.min(1, (bond2 - r2) / 0.5) * 0.3;
+        ctx!.strokeStyle = `rgba(${theme.bond}, ${a})`;
+        ctx!.beginPath();
+        ctx!.moveTo(x[i] * SIGMA_PX, y[i] * SIGMA_PX);
+        ctx!.lineTo(x[j] * SIGMA_PX, y[j] * SIGMA_PX);
+        ctx!.stroke();
+      });
+      ctx!.fillStyle = `rgba(${theme.particle}, 0.6)`;
+      ctx!.beginPath();
+      for (let i = 0; i < n; i++) {
+        ctx!.moveTo(x[i] * SIGMA_PX + 1.8, y[i] * SIGMA_PX);
+        ctx!.arc(x[i] * SIGMA_PX, y[i] * SIGMA_PX, 1.8, 0, Math.PI * 2);
+      }
+      ctx!.fill();
+    }
+
+    function tick() {
+      if (!running) return;
+      for (let s = 0; s < SUBSTEPS; s++) step();
+      draw();
+      frame = requestAnimationFrame(tick);
+    }
+
+    function play() {
+      if (running || reduced) return;
+      running = true;
+      frame = requestAnimationFrame(tick);
+    }
+
+    function pause() {
+      running = false;
+      cancelAnimationFrame(frame);
+    }
+
+    function settle() {
+      // Let the lattice melt before anyone sees it.
+      for (let s = 0; s < 300; s++) step();
+      draw();
+    }
+
+    setup();
+    settle();
+
+    new IntersectionObserver(([entry]) => (entry.isIntersecting ? play() : pause())).observe(canvas);
+    document.addEventListener('visibilitychange', () => (document.hidden ? pause() : play()));
+    let width = canvas.clientWidth;
+    new ResizeObserver(() => {
+      if (canvas.clientWidth === width) return; // height-only changes, e.g. mobile toolbars
+      width = canvas.clientWidth;
+      setup();
+      settle();
+    }).observe(canvas);
+    new MutationObserver(() => {
+      theme = colours();
+      draw();
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+    const host = canvas.parentElement ?? canvas;
+    host.addEventListener('pointermove', (event) => {
+      const rect = canvas.getBoundingClientRect();
+      pointer = { x: (event.clientX - rect.left) / SIGMA_PX, y: (event.clientY - rect.top) / SIGMA_PX };
+    });
+    host.addEventListener('pointerleave', () => (pointer = null));
+  }
+
+  document.querySelectorAll<HTMLCanvasElement>('canvas.particle-field').forEach(start);
+</script>
+
+<style>
+  .particle-field {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    -webkit-mask-image: radial-gradient(ellipse 85% 75% at 70% 35%, #000 25%, transparent 80%);
+    mask-image: radial-gradient(ellipse 85% 75% at 70% 35%, #000 25%, transparent 80%);
+    opacity: 0.9;
+  }
+</style>
