@@ -1,7 +1,9 @@
 ---
 // A small Lennard-Jones fluid (src/lib/lj-fluid.ts), integrated live behind the
 // hero. Held near the critical temperature, it forms clusters that grow and
-// break up.
+// break up. It runs only while on screen, at no more than 60 frames a second,
+// and shows a still picture instead for reduced motion, Save-Data, or a device
+// that cannot keep up.
 ---
 
 <canvas class="particle-field" aria-hidden="true"></canvas>
@@ -12,8 +14,11 @@
   type Theme = { particle: string; bond: string };
 
   const SIGMA_PX = 16; // one sigma on screen
-  const SUBSTEPS = 3;
   const MAX_PARTICLES = 1600;
+  const SETTLE_STEPS = 300; // enough for the starting lattice to melt
+  const FRAME_MS = 1000 / 60; // high refresh rate screens get 60 frames a second, not 120
+  const BUDGET_MS = 6; // the most one frame's simulation and drawing may take
+  const SLICE_MS = 5; // settling runs in slices this long, so it never blocks the page
 
   function colours(): Theme {
     const style = getComputedStyle(document.documentElement);
@@ -23,14 +28,28 @@
     };
   }
 
+  // Runs work when the browser is idle, or soon where it cannot say.
+  const idle = (work: () => void) =>
+    'requestIdleCallback' in window ? requestIdleCallback(work, { timeout: 200 }) : setTimeout(work, 16);
+
   function start(canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // A still picture instead of an animation: for reduced motion, for Save-Data,
+    // and for devices too slow to animate within the frame budget.
+    const saveData = (navigator as { connection?: { saveData?: boolean } }).connection?.saveData === true;
+    let still = matchMedia('(prefers-reduced-motion: reduce)').matches || saveData;
     let theme = colours();
     let fluid: LJFluid;
+    let generation = 0;
+    let settled = false;
+    let onScreen = false;
     let running = false;
     let frame = 0;
+    let last = 0;
+    let substeps = 3;
+    let cost = 0; // moving average of one frame's work, in milliseconds
+    let measured = 0;
 
     function setup() {
       const rect = canvas.getBoundingClientRect();
@@ -66,45 +85,83 @@
       ctx!.fill();
     }
 
-    function tick() {
+    // Keeps each frame within budget: fewer steps per frame first, then a still picture.
+    function adapt(ms: number) {
+      cost = measured === 0 ? ms : 0.9 * cost + 0.1 * ms;
+      if (++measured < 30 || cost <= BUDGET_MS) return;
+      if (substeps > 1) substeps--;
+      else {
+        still = true;
+        pause();
+      }
+      measured = 0;
+    }
+
+    function tick(now: number) {
       if (!running) return;
-      fluid.step(SUBSTEPS);
-      draw();
       frame = requestAnimationFrame(tick);
+      if (now - last < FRAME_MS - 1) return;
+      last = now;
+      const t0 = performance.now();
+      fluid.step(substeps);
+      draw();
+      adapt(performance.now() - t0);
     }
 
     function play() {
-      if (running || reduced) return;
+      if (running || still || !settled || !onScreen || document.hidden) return;
       running = true;
+      canvas.dataset.state = 'running';
       frame = requestAnimationFrame(tick);
     }
 
     function pause() {
       running = false;
       cancelAnimationFrame(frame);
+      canvas.dataset.state = still ? 'still' : 'paused';
     }
 
+    // Melts the starting lattice a slice at a time, then shows the fluid.
     function settle() {
-      // Let the lattice melt before anyone sees it.
-      fluid.step(300);
-      draw();
+      const mine = ++generation;
+      settled = false;
+      let remaining = SETTLE_STEPS;
+      const slice = () => {
+        if (mine !== generation) return; // resized since; a newer settle is running
+        const end = performance.now() + SLICE_MS;
+        while (remaining > 0 && performance.now() < end) {
+          fluid.step(1);
+          remaining--;
+        }
+        if (remaining > 0) return void idle(slice);
+        settled = true;
+        draw();
+        canvas.classList.add('ready');
+        pause();
+        play();
+      };
+      idle(slice);
     }
 
     setup();
     settle();
 
-    new IntersectionObserver(([entry]) => (entry.isIntersecting ? play() : pause())).observe(canvas);
+    new IntersectionObserver(([entry]) => {
+      onScreen = entry.isIntersecting;
+      onScreen ? play() : pause();
+    }).observe(canvas);
     document.addEventListener('visibilitychange', () => (document.hidden ? pause() : play()));
     let width = canvas.clientWidth;
     new ResizeObserver(() => {
       if (canvas.clientWidth === width) return; // height-only changes, e.g. mobile toolbars
       width = canvas.clientWidth;
+      pause();
       setup();
       settle();
     }).observe(canvas);
     new MutationObserver(() => {
       theme = colours();
-      draw();
+      if (settled) draw();
     }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
     const host = canvas.parentElement ?? canvas;
@@ -127,6 +184,10 @@
     pointer-events: none;
     -webkit-mask-image: radial-gradient(ellipse 85% 75% at 70% 35%, #000 25%, transparent 80%);
     mask-image: radial-gradient(ellipse 85% 75% at 70% 35%, #000 25%, transparent 80%);
+    opacity: 0;
+    transition: opacity 0.8s ease;
+  }
+  .particle-field.ready {
     opacity: 0.9;
   }
 </style>

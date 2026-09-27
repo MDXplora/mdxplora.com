@@ -113,3 +113,24 @@ test("the browser's own colour follows the theme", async ({ page, isMobile }) =>
   await page.locator('.theme-toggle').first().click();
   expect(await colour()).toBe(await background());
 });
+
+test.describe('the hero fluid', () => {
+  const state = (page: import('@playwright/test').Page) =>
+    page.locator('canvas.particle-field').getAttribute('data-state');
+
+  test('runs while on screen and stops when scrolled away', async ({ page }) => {
+    await page.goto('/');
+    await expect.poll(() => state(page)).toBe('running');
+    await page.locator('#faq').scrollIntoViewIfNeeded();
+    await expect.poll(() => state(page)).toBe('paused');
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect.poll(() => state(page)).toBe('running');
+  });
+
+  test('is a still picture when motion is reduced', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    await expect(page.locator('canvas.particle-field')).toHaveClass(/ready/);
+    await expect.poll(() => state(page)).toBe('still');
+  });
+});
