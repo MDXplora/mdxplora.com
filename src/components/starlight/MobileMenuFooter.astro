@@ -1,0 +1,27 @@
+---
+import Default from '@astrojs/starlight/components/MobileMenuFooter.astro';
+import { nav } from '../../data/site';
+---
+
+<nav aria-label="Site" class="mobile-site-nav">
+  {nav.map((item) => (
+    <a href={item.href}>{item.label}</a>
+  ))}
+  <a href="/">Home</a>
+</nav>
+<Default />
+
+<style>
+  .mobile-site-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    padding-block: 1rem;
+    border-top: 1px solid var(--sl-color-gray-6);
+  }
+  .mobile-site-nav a {
+    color: var(--sl-color-gray-2);
+    text-decoration: none;
+    font-weight: 500;
+  }
+</style>

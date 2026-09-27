@@ -1,0 +1,103 @@
+/*
+ * Design tokens, shared by the marketing pages and the docs.
+ *
+ * Both themes are defined here once. The docs read them through Starlight's
+ * own variables (the --sl-* block at the end), so a colour changed here
+ * changes everywhere.
+ */
+
+:root {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 18px;
+  --page-max: 1180px;
+  --gutter: clamp(16px, 4vw, 32px);
+  --section-pad: clamp(72px, 10vw, 128px);
+
+  --teal: #22c3b5;
+  --blue: #4c7dff;
+  --violet: #8b6cff;
+  --brand-gradient: linear-gradient(120deg, var(--teal) 0%, var(--blue) 55%, var(--violet) 100%);
+}
+
+/* Dark is the default; light follows. data-theme is set before first paint. */
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #070b16;
+  --bg-raised: #0d1426;
+  --bg-sunken: #050810;
+  --surface: #111a31;
+  --surface-hover: #16213d;
+  --border: #1f2a47;
+  --border-strong: #2d3b61;
+  --fg: #eef1f8;
+  --fg-muted: #a5aec8;
+  --fg-subtle: #737d9c;
+  --link: #8fb0ff;
+  --accent: #6f97ff;
+  --accent-fg: #06122f;
+  --code-bg: #0a1022;
+  --glow: rgba(76, 125, 255, 0.18);
+  --particle: 143, 176, 255;
+  --bond: 34, 195, 181;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 20px 50px -20px rgba(0, 0, 0, 0.6);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #fafbfe;
+  --bg-raised: #ffffff;
+  --bg-sunken: #f1f3f9;
+  --surface: #ffffff;
+  --surface-hover: #f5f7fc;
+  --border: #e2e6f0;
+  --border-strong: #cbd2e3;
+  --fg: #0b1122;
+  --fg-muted: #4b5573;
+  --fg-subtle: #6b7493;
+  --link: #2451d6;
+  --accent: #2451d6;
+  --accent-fg: #ffffff;
+  --code-bg: #0b1122;
+  --glow: rgba(36, 81, 214, 0.12);
+  --particle: 36, 81, 214;
+  --bond: 20, 150, 140;
+  --shadow: 0 1px 2px rgba(11, 17, 34, 0.04), 0 18px 40px -24px rgba(11, 17, 34, 0.25);
+}
+
+/* Starlight, mapped onto the tokens above. */
+:root,
+:root[data-theme='dark'] {
+  --sl-font: var(--font-sans);
+  --sl-font-mono: var(--font-mono);
+  --sl-color-accent-low: #0f1f4d;
+  --sl-color-accent: #4c7dff;
+  --sl-color-accent-high: #c9d7ff;
+  --sl-color-white: #ffffff;
+  --sl-color-gray-1: #e6e9f2;
+  --sl-color-gray-2: #c3c9da;
+  --sl-color-gray-3: #9aa3bd;
+  --sl-color-gray-4: #6b7596;
+  --sl-color-gray-5: #2a3454;
+  --sl-color-gray-6: #141d35;
+  --sl-color-black: #0b1122;
+}
+
+:root[data-theme='light'] {
+  --sl-color-accent-low: #dfe7ff;
+  --sl-color-accent: #2451d6;
+  --sl-color-accent-high: #14307f;
+  --sl-color-white: #0b1122;
+  --sl-color-gray-1: #1c2540;
+  --sl-color-gray-2: #313b5a;
+  --sl-color-gray-3: #525b76;
+  --sl-color-gray-4: #7e87a3;
+  --sl-color-gray-5: #c5cadb;
+  --sl-color-gray-6: #eceff6;
+  --sl-color-gray-7: #f5f7fb;
+  --sl-color-black: #ffffff;
+}
