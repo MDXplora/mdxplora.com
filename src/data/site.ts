@@ -1,7 +1,7 @@
 export const site = {
   name: 'MDXplora',
-  tagline: 'From a PDB code to publishable molecular dynamics',
-  support: 'Every study ships its methods, provenance and uncertainty.',
+  tagline: 'From question to publishable molecular dynamics',
+  support: 'Every study is reproducible, traceable and checked before it runs.',
   domain: 'mdxplora.com',
   email: 'hello@mdxplora.com',
   // Set as a repository variable for the deploy (see README). A production
