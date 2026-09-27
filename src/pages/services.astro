@@ -1,0 +1,143 @@
+---
+import Base from '../layouts/Base.astro';
+
+const offers = [
+  {
+    title: 'Studies run for you',
+    text: 'For groups that need molecular dynamics done and have no one to run it: stability, binding, mutation effects, free energy along a coordinate. You get the report, the data and the full record behind them.',
+    link: '/contact/?topic=study',
+  },
+  {
+    title: 'Training for your group',
+    text: 'Workshops that take a lab from its first study to its own campaigns, on its own systems and its own machines.',
+    link: '/contact/?topic=training',
+  },
+  {
+    title: 'Support',
+    text: 'For labs that depend on FastMDXplora: help with installation on clusters, with studies that refuse, and with results that need a second pair of eyes.',
+    link: '/contact/?topic=support',
+  },
+];
+
+const process = [
+  { title: 'Talk', text: 'What question the simulation has to answer, and what would count as an answer.' },
+  {
+    title: 'Agree the Config',
+    text: 'The study is written down as a FastMDXplora Config and agreed before any compute is spent.',
+  },
+  { title: 'Run', text: 'On the open-source software, so every step is one anybody can repeat.' },
+  {
+    title: 'Deliver',
+    text: 'The report, the data, and the Manifest recording what ran, on which versions, with which settings.',
+  },
+];
+---
+
+<Base
+  title="Services"
+  description="Molecular dynamics studies run for you, training for your group, and support for FastMDXplora."
+>
+  <section class="page-hero">
+    <div class="container">
+      <span class="eyebrow">Services</span>
+      <h1>Work with the people who wrote it.</h1>
+      <p class="lead">
+        FastMDXplora is free and open. When you want a study done, a group trained, or someone to call, we can help.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container grid-3">
+      {offers.map((o) => (
+        <article class="card offer">
+          <h3>{o.title}</h3>
+          <p>{o.text}</p>
+          <a class="text-link" href={o.link}>
+            Get in touch →
+          </a>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">How an engagement works</span>
+        <h2>Agreed on paper before anything runs.</h2>
+        <p>
+          Every engagement is run on the same open-source software you can install yourself, so nothing we deliver
+          depends on trusting us.
+        </p>
+      </div>
+      <ol class="process">
+        {process.map((p, i) => (
+          <li>
+            <span>{String(i + 1).padStart(2, '0')}</span>
+            <h3>{p.title}</h3>
+            <p>{p.text}</p>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .offer {
+    display: flex;
+    flex-direction: column;
+  }
+  .offer h3 {
+    font-size: 1.3rem;
+  }
+  .offer p {
+    flex: 1;
+  }
+  .text-link {
+    margin-top: 1.5rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .text-link:hover {
+    text-decoration: underline;
+  }
+  .process {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+    counter-reset: step;
+  }
+  .process li {
+    padding-top: 1.25rem;
+    border-top: 2px solid var(--border-strong);
+  }
+  .process span {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--fg-subtle);
+  }
+  .process h3 {
+    margin-top: 0.75rem;
+    font-size: 1.15rem;
+    letter-spacing: -0.015em;
+  }
+  .process p {
+    margin-top: 0.5rem;
+    color: var(--fg-muted);
+  }
+  @media (max-width: 900px) {
+    .process {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  @media (max-width: 560px) {
+    .process {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

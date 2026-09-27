@@ -1,0 +1,214 @@
+---
+import Base from '../layouts/Base.astro';
+import { site } from '../data/site';
+
+if (import.meta.env.PROD && !site.formspreeId) {
+  throw new Error('PUBLIC_FORMSPREE_ID is not set, so the contact form would have nowhere to send. See README.');
+}
+
+const topics = [
+  { value: 'early-access', label: 'Early access to hosted MDXplora' },
+  { value: 'study', label: 'A study run for us' },
+  { value: 'training', label: 'Training for our group' },
+  { value: 'support', label: 'Support' },
+  { value: 'other', label: 'Something else' },
+];
+const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}` : '';
+---
+
+<Base title="Contact" description="Talk to MDXplora about early access, a study, training or support.">
+  <section class="page-hero">
+    <div class="container">
+      <span class="eyebrow">Contact</span>
+      <h1>Talk to us.</h1>
+      <p class="lead">Early access, a study you need run, training for your group, or support. We read everything.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container layout">
+      <form class="card form" method="POST" action={endpoint} data-endpoint={endpoint} novalidate>
+        <div class="row">
+          <label>
+            <span>Name</span>
+            <input name="name" autocomplete="name" required />
+          </label>
+          <label>
+            <span>Email</span>
+            <input name="email" type="email" autocomplete="email" required />
+          </label>
+        </div>
+        <label>
+          <span>
+            Organisation <em>optional</em>
+          </span>
+          <input name="organisation" autocomplete="organization" />
+        </label>
+        <label>
+          <span>What is it about?</span>
+          <select name="topic" required>
+            {topics.map((t) => (
+              <option value={t.value}>{t.label}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>Message</span>
+          <textarea name="message" rows="6" required></textarea>
+        </label>
+        <!-- Left empty by people; filled by bots. -->
+        <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" class="trap" aria-hidden="true" />
+        <div class="submit">
+          <button class="button button-primary" type="submit" disabled={!endpoint}>
+            Send
+          </button>
+          <p class="status" role="status" aria-live="polite">
+            {!endpoint && 'The form is not connected in this build. Please email us instead.'}
+          </p>
+        </div>
+        <p class="fine">
+          Sent through Formspree and read only by us, to reply to you. See <a href="/privacy/">Privacy</a>.
+        </p>
+      </form>
+
+      <aside class="direct">
+        <h2>Prefer email?</h2>
+        <p>
+          <a href={`mailto:${site.email}`}>{site.email}</a>
+        </p>
+        <h2>Found a bug?</h2>
+        <p>
+          FastMDXplora is developed in the open. Report it on <a href={`${site.github}/issues`}>GitHub</a>.
+        </p>
+      </aside>
+    </div>
+  </section>
+</Base>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>('form.form');
+  const status = form?.querySelector<HTMLElement>('.status');
+  const button = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
+
+  const topic = new URLSearchParams(location.search).get('topic');
+  const select = form?.querySelector<HTMLSelectElement>('select[name="topic"]');
+  if (topic && select && Array.from(select.options).some((o) => o.value === topic)) select.value = topic;
+
+  form?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!form.dataset.endpoint || !status || !button) return;
+    if (!form.checkValidity()) {
+      status.textContent = 'Please fill in your name, a valid email address and a message.';
+      form.reportValidity();
+      return;
+    }
+    button.disabled = true;
+    status.textContent = 'Sending…';
+    try {
+      const response = await fetch(form.dataset.endpoint, {
+        method: 'POST',
+        body: new FormData(form),
+        headers: { Accept: 'application/json' },
+      });
+      if (!response.ok) throw new Error(String(response.status));
+      form.reset();
+      status.textContent = 'Thank you. Your message has arrived, and we will reply by email.';
+    } catch {
+      status.textContent = 'That did not go through. Please try again, or email us directly.';
+    } finally {
+      button.disabled = false;
+    }
+  });
+</script>
+
+<style>
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    gap: clamp(32px, 6vw, 72px);
+    align-items: start;
+  }
+  .form {
+    display: grid;
+    gap: 1.25rem;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+  label {
+    display: grid;
+    gap: 0.45rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  label em {
+    font-style: normal;
+    font-weight: 400;
+    color: var(--fg-subtle);
+  }
+  input,
+  select,
+  textarea {
+    width: 100%;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-s);
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+    font-weight: 400;
+  }
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+    border-color: transparent;
+  }
+  textarea {
+    resize: vertical;
+  }
+  .trap {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+  }
+  .submit {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .submit button[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .status {
+    color: var(--fg-muted);
+    font-size: 0.925rem;
+  }
+  .fine {
+    font-size: 0.825rem;
+    color: var(--fg-subtle);
+  }
+  .direct h2 {
+    font-size: 1.1rem;
+    letter-spacing: -0.015em;
+  }
+  .direct h2 + p {
+    margin-top: 0.5rem;
+    margin-bottom: 2rem;
+    color: var(--fg-muted);
+  }
+  @media (max-width: 800px) {
+    .layout,
+    .row {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

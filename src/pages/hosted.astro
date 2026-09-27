@@ -1,0 +1,179 @@
+---
+import Base from '../layouts/Base.astro';
+
+const steps = [
+  {
+    title: 'Install the connector, once',
+    text: 'One command on your workstation or on your cluster’s login node, then sign in with your MDXplora account.',
+  },
+  {
+    title: 'Your machine appears in MDXplora',
+    text: 'It shows up under “Run on”, beside MDXplora’s own GPUs, with what it has: its GPUs and, on a cluster, its scheduler.',
+  },
+  {
+    title: 'Choose where each study runs',
+    text: 'Build the study in the browser, pick the machine and press Run. Each choice shows the estimated time before you commit.',
+  },
+  {
+    title: 'The connector does the work',
+    text: 'It picks the job up, runs FastMDXplora there, or submits it to SLURM, and sends progress back to your browser.',
+  },
+];
+---
+
+<Base
+  title="Hosted"
+  description="MDXplora in your browser: the FastMDXplora Agent and GUI with nothing to install, on our GPUs or your own."
+>
+  <section class="page-hero">
+    <div class="container">
+      <span class="pill">
+        <span class="dot"></span> In development · early access
+      </span>
+      <h1>MDXplora in your browser</h1>
+      <p class="lead">
+        The FastMDXplora Agent and GUI, hosted. Nothing to install, no GPU to own, and the choice of running on GPUs we
+        provide or on the machines you already have.
+      </p>
+      <div class="cta">
+        <a class="button button-primary" href="/contact/?topic=early-access">
+          Join early access
+        </a>
+        <a class="button button-secondary" href="/docs/installation/">
+          Use FastMDXplora today
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container grid-3">
+      <article class="card">
+        <h3>Nothing to install</h3>
+        <p>Open a browser and sign in. No environment to build and no drivers to match to a CUDA version.</p>
+      </article>
+      <article class="card">
+        <h3>The same studies, unchanged</h3>
+        <p>
+          MDXplora runs FastMDXplora. A Config written on your laptop runs there as it is, and a study run there comes
+          back as an ordinary FastMDXplora directory that runs on your laptop again.
+        </p>
+      </article>
+      <article class="card">
+        <h3>Compute you choose</h3>
+        <p>Our GPUs when you have none, your own workstation or cluster when you do, chosen per study.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Your own compute</span>
+        <h2>Our interface, your machines.</h2>
+        <p>
+          Your machine asks MDXplora for work, the way a mail app checks for new mail. Nothing reaches into your
+          network, so there are no ports to open and nothing for IT to configure.
+        </p>
+      </div>
+      <ol class="steps">
+        {steps.map((s, i) => (
+          <li class="card">
+            <span class="step-number">{i + 1}</span>
+            <h3>{s.title}</h3>
+            <p>{s.text}</p>
+          </li>
+        ))}
+      </ol>
+      <div class="notes grid-2">
+        <div>
+          <h3>Your data can stay where it is</h3>
+          <p>Trajectories can remain on your own storage, with only the study records and reports shown in MDXplora.</p>
+        </div>
+        <div>
+          <h3>It only runs MD studies</h3>
+          <p>
+            The connector runs validated FastMDXplora Configs and nothing else. It never executes code sent to it, which
+            is what makes it straightforward for an IT department to approve.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container closing">
+      <h2>Tell us what you would run.</h2>
+      <p>
+        Early access is opening to a small number of groups first. Tell us about your systems and your compute, and we
+        will be in touch.
+      </p>
+      <a class="button button-primary" href="/contact/?topic=early-access">
+        Join early access
+      </a>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .cta {
+    margin-top: 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+  }
+  .step-number {
+    display: inline-grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    margin-bottom: 1.25rem;
+    border-radius: 50%;
+    background: var(--brand-gradient);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+  .notes {
+    margin-top: 3rem;
+    gap: 2.5rem;
+  }
+  .notes h3 {
+    font-size: 1.15rem;
+    letter-spacing: -0.015em;
+  }
+  .notes p {
+    margin-top: 0.5rem;
+    color: var(--fg-muted);
+  }
+  .closing {
+    text-align: center;
+    max-width: 40rem;
+  }
+  .closing h2 {
+    font-size: clamp(2rem, 4vw, 2.75rem);
+  }
+  .closing p {
+    margin: 1rem auto 2rem;
+    color: var(--fg-muted);
+    font-size: 1.1rem;
+  }
+  @media (max-width: 960px) {
+    .steps {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 600px) {
+    .steps {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

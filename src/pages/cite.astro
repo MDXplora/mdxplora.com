@@ -1,0 +1,153 @@
+---
+import Base from '../layouts/Base.astro';
+import { release } from '../data/site';
+
+type Person = { given: string; family: string };
+const bibNames = (people: Person[]) => people.map((p) => `${p.family}, ${p.given}`).join(' and ');
+const textNames = (people: Person[]) =>
+  people
+    .map(
+      (p) =>
+        `${p.family}, ${p.given
+          .split(/\s+/)
+          .map((g) => `${g[0]}.`)
+          .join(' ')}`,
+    )
+    .join('; ');
+
+const paper = release.paper;
+const year = release.released?.slice(0, 4) ?? String(new Date().getFullYear());
+const version = release.version;
+
+const paperBib =
+  paper &&
+  `@article{aina${paper.year}fastmd,
+  author  = {${bibNames(paper.authors)}},
+  title   = {${paper.title}},
+  journal = {${paper.journal}},
+  volume  = {${paper.volume}},
+  number  = {${paper.issue}},
+  year    = {${paper.year}},
+  doi     = {${paper.doi}},
+}`;
+
+const softwareBib = `@software{fastmdxplora_${version.replaceAll('.', '_')},
+  author  = {${bibNames(release.software.authors)}},
+  title   = {${release.software.title}},
+  version = {${version}},
+  year    = {${year}},
+  doi     = {${release.doi}},
+  url     = {${release.repository}},
+}`;
+---
+
+<Base title="Cite" description="How to cite FastMDXplora, and the archived DOI of every release.">
+  <section class="page-hero">
+    <div class="container">
+      <span class="eyebrow">Cite</span>
+      <h1>Citing FastMDXplora</h1>
+      <p class="lead">
+        If FastMDXplora contributed to your work, cite the paper. To say exactly which version produced your results,
+        cite the release as well.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container stack">
+      {paper && (
+        <article class="card citation">
+          <span class="eyebrow">The paper</span>
+          <p class="reference">
+            {textNames(paper.authors)} {paper.title}. <em>{paper.journal}</em> <strong>{paper.year}</strong>,{' '}
+            {paper.volume}({paper.issue}). <a href={`https://doi.org/${paper.doi}`}>doi:{paper.doi}</a>
+          </p>
+          <div class="bib">
+            <pre class="code"><code>{paperBib}</code></pre>
+            <button class="copy button button-secondary button-small" type="button" data-copy={paperBib}>
+              Copy BibTeX
+            </button>
+          </div>
+        </article>
+      )}
+
+      <article class="card citation">
+        <span class="eyebrow">The software, version {version}</span>
+        <p class="reference">
+          {textNames(release.software.authors)} {release.software.title}, version {version}. Zenodo, {year}.{' '}
+          <a href={`https://doi.org/${release.doi}`}>doi:{release.doi}</a>
+        </p>
+        <div class="bib">
+          <pre class="code"><code>{softwareBib}</code></pre>
+          <button class="copy button button-secondary button-small" type="button" data-copy={softwareBib}>
+            Copy BibTeX
+          </button>
+        </div>
+        <p class="note">
+          Each release has its own DOI. <a href={`https://doi.org/${release.conceptDoi}`}>{release.conceptDoi}</a>{' '}
+          always resolves to the latest one, and lists every earlier version.
+        </p>
+      </article>
+    </div>
+  </section>
+</Base>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('button[data-copy]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(button.dataset.copy ?? '');
+        const label = button.textContent;
+        button.textContent = 'Copied';
+        setTimeout(() => (button.textContent = label), 1600);
+      } catch {
+        button.textContent = 'Select the text to copy';
+      }
+    });
+  });
+</script>
+
+<style>
+  .stack {
+    display: grid;
+    gap: 1.5rem;
+    max-width: 56rem;
+  }
+  .stack > *,
+  .bib {
+    min-width: 0;
+  }
+  .reference {
+    margin-top: 1rem;
+    font-size: 1.05rem;
+    color: var(--fg);
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+  }
+  .bib {
+    position: relative;
+    margin-top: 1.5rem;
+  }
+  .bib .code {
+    padding-right: 8rem;
+    font-size: 0.8rem;
+  }
+  .bib .copy {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: #111a31;
+    border-color: #2d3b61;
+    color: #dfe5f3;
+  }
+  .note {
+    margin-top: 1.25rem;
+    font-size: 0.925rem;
+  }
+  @media (max-width: 600px) {
+    .bib .code {
+      padding-right: 1.4rem;
+      padding-top: 3.5rem;
+    }
+  }
+</style>
