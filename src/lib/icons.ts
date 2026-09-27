@@ -1,5 +1,6 @@
 // The site's icons, drawn at build time from the brand mark.
 
+import { createHash } from 'node:crypto';
 import { Resvg } from '@resvg/resvg-js';
 import { markElements } from './brand';
 
@@ -11,6 +12,12 @@ export function markSvg(options: Parameters<typeof markElements>[0] = {}): strin
 export function markPng(size: number, options: Parameters<typeof markElements>[0] = {}): Uint8Array<ArrayBuffer> {
   return new Uint8Array(new Resvg(markSvg(options), { fitTo: { mode: 'width', value: size } }).render().asPng());
 }
+
+/**
+ * A short fingerprint of the mark, added to icon addresses as ?v=, so a
+ * browser that cached an older icon fetches the new one when the mark changes.
+ */
+export const iconVersion = createHash('sha256').update(markSvg()).digest('hex').slice(0, 8);
 
 /** An .ico holding PNG images, which every browser since Internet Explorer 9 reads. */
 export function ico(images: { size: number; png: Uint8Array }[]): Uint8Array<ArrayBuffer> {

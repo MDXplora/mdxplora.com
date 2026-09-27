@@ -8,6 +8,7 @@ import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import { cardFor } from '../data/cards';
 import { site } from '../data/site';
+import { iconVersion } from '../lib/icons';
 
 interface Props {
   title?: string;
@@ -32,10 +33,10 @@ const imageAlt = `${site.name}: ${card.title}`;
     <link rel="canonical" href={canonical} />
     <!-- Fetched with the page, so text does not reflow when it arrives. -->
     <link rel="preload" href={interLatin} as="font" type="font/woff2" crossorigin />
-    <link rel="icon" href="/favicon.ico" sizes="32x32" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href={`/favicon.ico?v=${iconVersion}`} sizes="32x32" />
+    <link rel="icon" href={`/favicon.svg?v=${iconVersion}`} type="image/svg+xml" />
+    <link rel="apple-touch-icon" href={`/apple-touch-icon.png?v=${iconVersion}`} />
+    <link rel="manifest" href={`/manifest.webmanifest?v=${iconVersion}`} />
     <link rel="sitemap" href="/sitemap-index.xml" />
     <meta name="theme-color" content="#070b16" />
     <meta property="og:type" content="website" />

@@ -103,6 +103,14 @@ test('the icons, the manifest and the structured data all resolve', async ({ pag
   expect(await png(new URL(organization.logo).pathname)).toEqual([512, 512]);
 });
 
+test('the browser icon is the current mark, at an address that changes with it', async ({ page, request }) => {
+  await page.goto('/');
+  const href = await page.locator('link[rel="icon"][type="image/svg+xml"]').getAttribute('href');
+  expect(href).toMatch(/^\/favicon\.svg\?v=[0-9a-f]{8}$/);
+  const svg = await (await request.get(href!)).text();
+  expect(svg.match(/<circle/g)?.length, 'the droplet has seven atoms').toBe(7);
+});
+
 test("the browser's own colour follows the theme", async ({ page, isMobile }) => {
   test.skip(isMobile, 'the toggle sits in the header on wide screens');
   await page.goto('/');
