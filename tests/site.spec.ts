@@ -106,6 +106,39 @@ test('a message arrives with a subject naming its topic and sender', async ({ pa
   expect(sent[0].topic).toBe('training');
 });
 
+test('early-access questions show for that topic only, and are sent only with it', async ({ page }) => {
+  const sent = await captureForm(page);
+  await page.goto('/contact/?topic=early-access');
+  const early = page.getByRole('group', { name: /About your work/ });
+  await expect(early).toBeVisible();
+  await early.getByLabel('Where you work').selectOption('An academic research group');
+  await early.getByLabel('Compute you have now').selectOption('A workstation with a GPU');
+  await early.getByLabel('What you want to simulate').fill('A small protein in water.');
+
+  await page.getByLabel('What is it about?').selectOption('support');
+  await expect(early).toBeHidden();
+  await page.getByLabel('What is it about?').selectOption('early-access');
+  await expect(early).toBeVisible();
+
+  await fillContact(page);
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.locator('.status')).toContainText('Thank you');
+  expect(sent[0]).toMatchObject({
+    _subject: 'MDXplora website: Early access request from Ada Lovelace',
+    group: 'An academic research group',
+    compute: 'A workstation with a GPU',
+    systems: 'A small protein in water.',
+  });
+
+  // A different topic sends none of them.
+  await page.getByLabel('What is it about?').selectOption('support');
+  await fillContact(page);
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect.poll(() => sent.length).toBe(2);
+  expect(Object.keys(sent[1])).not.toContain('group');
+  expect(Object.keys(sent[1])).not.toContain('systems');
+});
+
 test('the icons, the manifest and the structured data all resolve', async ({ page, request }) => {
   const png = async (path: string) => {
     const response = await request.get(path);

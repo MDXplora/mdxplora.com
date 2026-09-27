@@ -24,6 +24,15 @@ const topics = [
   { value: 'support', label: 'Support', subject: 'Support request' },
   { value: 'other', label: 'Something else', subject: 'Message' },
 ];
+// Optional questions for early access, to help decide who to bring in first.
+const groups = ['An academic research group', 'A company', 'Teaching a course', 'Something else'];
+const compute = [
+  'None yet',
+  'A workstation with a GPU',
+  'A cluster (university, national or company)',
+  'Cloud GPUs',
+  'Not sure',
+];
 const subjectPrefix = `${site.name} website`;
 const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}` : '';
 ---
@@ -66,6 +75,40 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
             ))}
           </select>
         </label>
+        <fieldset class="early" id="early-access">
+          <legend>
+            About your work <em>optional</em>
+          </legend>
+          <p class="hint">
+            For early access. These help us decide who to bring in first. If we can offer you a place, we will set out
+            the terms before anything starts.
+          </p>
+          <div class="row">
+            <label>
+              <span>Where you work</span>
+              <select name="group">
+                <option value="">Choose one</option>
+                {groups.map((g) => (
+                  <option>{g}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Compute you have now</span>
+              <select name="compute">
+                <option value="">Choose one</option>
+                {compute.map((c) => (
+                  <option>{c}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label>
+            <span>What you want to simulate</span>
+            <textarea name="systems" rows="3" aria-describedby="systems-hint"></textarea>
+            <small id="systems-hint">The system, roughly how many atoms, and the question you want answered.</small>
+          </label>
+        </fieldset>
         <label>
           <span>Message</span>
           <textarea name="message" rows="6" required></textarea>
@@ -92,8 +135,8 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
         <p>
           <a href={`mailto:${site.email}`}>{site.email}</a>
         </p>
-        <h2>Joining early access?</h2>
-        <p>Tell us about the systems you study and the compute you have. It helps us decide who to bring in first.</p>
+        <h2>What happens next</h2>
+        <p>We read every message and reply by email. Asking about early access commits you to nothing.</p>
       </aside>
     </div>
   </section>
@@ -107,6 +150,17 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
   const topic = new URLSearchParams(location.search).get('topic');
   const select = form?.querySelector<HTMLSelectElement>('select[name="topic"]');
   if (topic && select && Array.from(select.options).some((o) => o.value === topic)) select.value = topic;
+
+  // The early-access questions show only for that topic. A disabled fieldset is not sent.
+  const early = form?.querySelector<HTMLFieldSetElement>('#early-access');
+  const showEarly = () => {
+    if (!early || !select) return;
+    const on = select.value === 'early-access';
+    early.hidden = !on;
+    early.disabled = !on;
+  };
+  select?.addEventListener('change', showEarly);
+  showEarly();
 
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -133,6 +187,7 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
       });
       if (!response.ok) throw new Error(String(response.status));
       form.reset();
+      showEarly();
       status.textContent = 'Thank you. Your message has arrived, and we will reply by email.';
     } catch {
       status.textContent = 'That did not go through. Please try again, or email us directly.';
@@ -190,6 +245,34 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
   }
   textarea {
     resize: vertical;
+  }
+  fieldset {
+    display: grid;
+    gap: 1.25rem;
+    margin: 0;
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-s);
+    min-inline-size: 0;
+  }
+  fieldset[hidden] {
+    display: none;
+  }
+  legend {
+    padding-inline: 0.4rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  legend em {
+    font-style: normal;
+    font-weight: 400;
+    color: var(--fg-subtle);
+  }
+  .hint,
+  small {
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: var(--fg-muted);
   }
   .trap {
     position: absolute;
