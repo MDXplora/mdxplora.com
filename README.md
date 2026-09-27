@@ -49,6 +49,9 @@ injected code does not run; the form may send only to Formspree. A browser test 
 inline code wholesale, or blocks anything the site itself uses. When adding a third-party script, image or form
 endpoint, add its host to the policy in the same change.
 
+The site publishes `/.well-known/security.txt` (RFC 9116), pointing security reports to the contact address. Its
+expiry is set just under a year ahead at each build, so a deploy at least once a year keeps it valid.
+
 ## Visit counts
 
 With `PUBLIC_CF_ANALYTICS_TOKEN` set, every page loads Cloudflare Web Analytics, which uses no cookies and stores nothing

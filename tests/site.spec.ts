@@ -217,6 +217,22 @@ test('early-access questions show for that topic only, and are sent only with it
   expect(Object.keys(sent[1])).not.toContain('systems');
 });
 
+test('security reports have somewhere to go (RFC 9116)', async ({ request }) => {
+  const response = await request.get('/.well-known/security.txt');
+  expect(response.status()).toBe(200);
+  const fields = Object.fromEntries(
+    (await response.text())
+      .trim()
+      .split('\n')
+      .map((line) => line.split(/: (.*)/s).slice(0, 2)),
+  );
+  expect(fields.Contact).toBe('mailto:info@mdxplora.com');
+  expect(fields.Canonical).toBe('https://mdxplora.com/.well-known/security.txt');
+  const daysLeft = (Date.parse(fields.Expires) - Date.now()) / 86_400_000;
+  expect(daysLeft, 'expires in the future, less than a year ahead').toBeGreaterThan(0);
+  expect(daysLeft).toBeLessThan(365);
+});
+
 test('the icons, the manifest and the structured data all resolve', async ({ page, request }) => {
   const png = async (path: string) => {
     const response = await request.get(path);

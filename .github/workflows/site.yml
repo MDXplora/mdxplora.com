@@ -64,6 +64,8 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:
           path: dist
+          # For /.well-known/security.txt; the build has no other hidden files.
+          include-hidden-files: true
 
   deploy:
     needs: build
