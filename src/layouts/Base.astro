@@ -29,7 +29,10 @@ const imageAlt = `${site.name}: ${card.title}`;
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="sitemap" href="/sitemap-index.xml" />
     <meta name="theme-color" content="#070b16" />
     <meta property="og:type" content="website" />
@@ -59,8 +62,13 @@ const imageAlt = `${site.name}: ${card.title}`;
               ? 'light'
               : 'dark';
         document.documentElement.dataset.theme = theme;
+        // The browser's own chrome (address bar, status bar) follows the page.
+        document
+          .querySelector('meta[name="theme-color"]')
+          ?.setAttribute('content', theme === 'light' ? '#fafbfe' : '#070b16');
       })();
     </script>
+    <slot name="head" />
   </head>
   <body>
     <a class="skip-link" href="#main">

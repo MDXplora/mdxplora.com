@@ -1,4 +1,6 @@
 ---
+import { markElements } from '../lib/brand';
+
 interface Props {
   size?: number;
   wordmark?: boolean;
@@ -9,28 +11,14 @@ const { size = 28, wordmark = true, id = 'logo-gradient' } = Astro.props;
 ---
 
 <span class="logo">
-  <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-    <defs>
-      <linearGradient id={id} x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-        <stop offset="0" stop-color="#22c3b5"></stop>
-        <stop offset="0.55" stop-color="#4c7dff"></stop>
-        <stop offset="1" stop-color="#8b6cff"></stop>
-      </linearGradient>
-    </defs>
-    <rect width="32" height="32" rx="8" fill={`url(#${id})`}></rect>
-    <path
-      d="M9 21.5 16 11l7 8"
-      fill="none"
-      stroke="#fff"
-      stroke-width="2.2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      opacity="0.85"
-    ></path>
-    <circle cx="9" cy="21.5" r="3.1" fill="#fff"></circle>
-    <circle cx="16" cy="11" r="3.6" fill="#fff"></circle>
-    <circle cx="23" cy="19" r="2.7" fill="#fff"></circle>
-  </svg>
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 32 32"
+    aria-hidden="true"
+    focusable="false"
+    set:html={markElements({ id })}
+  />
   {wordmark && (
     <span class="wordmark">
       MDX<span>plora</span>

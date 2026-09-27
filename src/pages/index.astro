@@ -3,6 +3,29 @@ import ParticleField from '../components/ParticleField.astro';
 import Base from '../layouts/Base.astro';
 import { engine, site } from '../data/site';
 
+// Tells search engines what the name and logo are, for the result card.
+const home = Astro.site!.href;
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${home}#organization`,
+      name: site.name,
+      url: home,
+      logo: new URL('/icon-512.png', home).href,
+      email: site.email,
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${home}#website`,
+      name: site.name,
+      url: home,
+      publisher: { '@id': `${home}#organization` },
+    },
+  ],
+};
+
 const phases = [
   {
     name: 'Config',
@@ -95,6 +118,7 @@ const faq = [
 ---
 
 <Base>
+  <script is:inline type="application/ld+json" slot="head" set:html={JSON.stringify(structuredData)} />
   <section class="hero">
     <ParticleField />
     <div class="container hero-inner">

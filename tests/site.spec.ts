@@ -75,3 +75,41 @@ test('a link from another page chooses the contact topic', async ({ page }) => {
   await expect(page.locator('select[name="topic"]')).toHaveValue('training');
   await expect(page.locator('input[name="_gotcha"]')).not.toBeInViewport();
 });
+
+test('the icons, the manifest and the structured data all resolve', async ({ page, request }) => {
+  const png = async (path: string) => {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(200);
+    const body = await response.body();
+    return [body.readUInt32BE(16), body.readUInt32BE(20)];
+  };
+  expect(await png('/apple-touch-icon.png')).toEqual([180, 180]);
+
+  const ico = await request.get('/favicon.ico');
+  expect(ico.status()).toBe(200);
+  expect((await ico.body()).readUInt16LE(4), 'images in favicon.ico').toBe(3);
+
+  const manifest = await (await request.get('/manifest.webmanifest')).json();
+  expect(manifest.name).toBe('MDXplora');
+  for (const icon of manifest.icons) {
+    const [w, h] = icon.sizes.split('x').map(Number);
+    expect(await png(icon.src), icon.src).toEqual([w, h]);
+  }
+
+  await page.goto('/');
+  const graph = JSON.parse((await page.locator('script[type="application/ld+json"]').textContent())!)['@graph'];
+  const organization = graph.find((node: { '@type': string }) => node['@type'] === 'Organization');
+  expect(organization.name).toBe('MDXplora');
+  expect(await png(new URL(organization.logo).pathname)).toEqual([512, 512]);
+});
+
+test("the browser's own colour follows the theme", async ({ page, isMobile }) => {
+  test.skip(isMobile, 'the toggle sits in the header on wide screens');
+  await page.goto('/');
+  const colour = () => page.locator('meta[name="theme-color"]').getAttribute('content');
+  const background = () =>
+    page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--bg').trim());
+  expect(await colour()).toBe(await background());
+  await page.locator('.theme-toggle').first().click();
+  expect(await colour()).toBe(await background());
+});
