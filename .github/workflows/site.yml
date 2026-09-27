@@ -1,0 +1,77 @@
+name: Site
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Daily, so a new FastMDXplora release reaches the site without a commit here.
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      PUBLIC_FORMSPREE_ID: ${{ vars.PUBLIC_FORMSPREE_ID }}
+      BANNED_TERMS: ${{ secrets.BANNED_TERMS }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: scripts/requirements.txt
+
+      - run: python -m pip install -r scripts/requirements.txt
+      - run: npm ci
+      - run: npm run format:check
+
+      # The banned-terms list is a secret, so pull requests from forks, which
+      # cannot read it, are checked when they reach main instead.
+      - name: Check the source for banned terms
+        if: env.BANNED_TERMS != ''
+        run: node scripts/check-terms.mjs
+
+      - run: npm run build
+      - run: npm run check
+        env:
+          CI: ${{ env.BANNED_TERMS != '' && 'true' || '' }}
+
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+        env:
+          CI: 'true'
+
+      - uses: actions/upload-pages-artifact@v4
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
