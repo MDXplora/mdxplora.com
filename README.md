@@ -20,6 +20,16 @@ npm run check        # types, internal links, banned terms
 npm test             # browser tests against the build
 ```
 
+## Link preview images
+
+Each page's preview image (`/og/<page>.png`, 1200 x 630) is drawn at build time by `src/lib/card-image.ts`: text from
+`src/data/cards.ts` over a snapshot of the hero's Lennard-Jones fluid, simulated from a fixed seed so every build draws
+the same image. A page's card title must match its headline; a browser test checks it. To preview one, build and open
+`dist/og/home.png`.
+
+`npm audit` reports a moderate advisory in `fflate`, which the image renderer uses only to decompress the bundled fonts
+at build time. The advisory concerns ZIP archives, which it never reads, and nothing from it reaches the browser.
+
 ## Banned terms
 
 `scripts/check-terms.mjs` fails the build if any listed term appears in the source or the built pages. The list is not

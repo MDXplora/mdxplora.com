@@ -20,6 +20,24 @@ for (const path of pages) {
   });
 }
 
+test('each page has its own link preview image, matching its headline', async ({ page, request }) => {
+  for (const path of pages) {
+    await page.goto(path);
+    const image = await page.locator('meta[property="og:image"]').getAttribute('content');
+    const alt = await page.locator('meta[property="og:image:alt"]').getAttribute('content');
+    const headline = (await page.locator('h1').first().innerText()).replace(/\s+/g, ' ').trim();
+    expect(alt, path).toContain(headline);
+
+    // The image is addressed on the live domain; fetch the same path from this build.
+    const response = await request.get(new URL(image!).pathname);
+    expect(response.status(), path).toBe(200);
+    expect(response.headers()['content-type'], path).toContain('image/png');
+    const png = await response.body();
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)], path).toEqual([1200, 630]);
+    expect(png.length, `${path} stays small enough for chat apps`).toBeLessThan(400_000);
+  }
+});
+
 test('a chosen theme is remembered on the next page', async ({ page, isMobile }) => {
   test.skip(isMobile, 'the toggle sits in the header on wide screens');
   await page.goto('/');

@@ -2,6 +2,7 @@ export const site = {
   name: 'MDXplora',
   tagline: 'From a PDB code to publishable molecular dynamics',
   support: 'Every study ships its methods, provenance and uncertainty.',
+  domain: 'mdxplora.com',
   email: 'hello@mdxplora.com',
   // Set as a repository variable for the deploy (see README). A production
   // build without it fails, so a form that cannot send is never published.
