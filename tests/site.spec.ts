@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const pages = ['/', '/compute/', '/services/', '/contact/', '/privacy/'];
 
@@ -74,6 +74,36 @@ test('a link from another page chooses the contact topic', async ({ page }) => {
   await page.goto('/contact/?topic=training');
   await expect(page.locator('select[name="topic"]')).toHaveValue('training');
   await expect(page.locator('input[name="_gotcha"]')).not.toBeInViewport();
+});
+
+// Records what the contact form sends and answers as Formspree would, so nothing leaves the test.
+async function captureForm(page: Page) {
+  const sent: Record<string, string>[] = [];
+  await page.route('https://formspree.io/**', async (route) => {
+    const fields: Record<string, string> = {};
+    const body = route.request().postData() ?? '';
+    for (const [, name, value] of body.matchAll(/name="([^"]+)"\r\n\r\n([\s\S]*?)\r\n--/g)) fields[name] = value;
+    sent.push(fields);
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
+  });
+  return sent;
+}
+
+async function fillContact(page: Page) {
+  await page.getByLabel('Name', { exact: true }).fill('Ada Lovelace');
+  await page.getByLabel('Email', { exact: true }).fill('ada@example.org');
+  await page.getByLabel('Message', { exact: true }).fill('A short test message.');
+}
+
+test('a message arrives with a subject naming its topic and sender', async ({ page }) => {
+  const sent = await captureForm(page);
+  await page.goto('/contact/?topic=training');
+  await fillContact(page);
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.locator('.status')).toContainText('Thank you');
+  expect(sent).toHaveLength(1);
+  expect(sent[0]._subject).toBe('MDXplora website: Training enquiry from Ada Lovelace');
+  expect(sent[0].topic).toBe('training');
 });
 
 test('the icons, the manifest and the structured data all resolve', async ({ page, request }) => {

@@ -16,13 +16,15 @@ if (
   );
 }
 
+// Each topic gives the email we receive its own subject line, so the inbox sorts itself.
 const topics = [
-  { value: 'early-access', label: 'Early access to MDXplora' },
-  { value: 'study', label: 'A study run for us' },
-  { value: 'training', label: 'Training for our group' },
-  { value: 'support', label: 'Support' },
-  { value: 'other', label: 'Something else' },
+  { value: 'early-access', label: 'Early access to MDXplora', subject: 'Early access request' },
+  { value: 'study', label: 'A study run for us', subject: 'Study enquiry' },
+  { value: 'training', label: 'Training for our group', subject: 'Training enquiry' },
+  { value: 'support', label: 'Support', subject: 'Support request' },
+  { value: 'other', label: 'Something else', subject: 'Message' },
 ];
+const subjectPrefix = `${site.name} website`;
 const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}` : '';
 ---
 
@@ -58,7 +60,9 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
           <span>What is it about?</span>
           <select name="topic" required>
             {topics.map((t) => (
-              <option value={t.value}>{t.label}</option>
+              <option value={t.value} data-subject={t.subject}>
+                {t.label}
+              </option>
             ))}
           </select>
         </label>
@@ -66,6 +70,8 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
           <span>Message</span>
           <textarea name="message" rows="6" required></textarea>
         </label>
+        <!-- The email's subject line; set from the topic and name when the form is sent. -->
+        <input type="hidden" name="_subject" value={`${subjectPrefix}: message`} data-prefix={subjectPrefix} />
         <!-- Left empty by people; filled by bots. -->
         <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" class="trap" aria-hidden="true" />
         <div class="submit">
@@ -110,6 +116,13 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
       form.reportValidity();
       return;
     }
+    const subject = form.querySelector<HTMLInputElement>('input[name="_subject"]');
+    const chosen = select?.selectedOptions[0]?.dataset.subject;
+    const name = (form.querySelector<HTMLInputElement>('input[name="name"]')?.value ?? '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 80);
+    if (subject && chosen) subject.value = `${subject.dataset.prefix}: ${chosen} from ${name}`;
     button.disabled = true;
     status.textContent = 'Sending…';
     try {
