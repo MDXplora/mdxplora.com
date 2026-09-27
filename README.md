@@ -41,6 +41,14 @@ at build time. The advisory concerns ZIP archives, which it never reads, and not
 kept in this repository. Locally it is read from `~/.config/mdxplora/banned-terms.txt` (one term per line, `#` for
 comments); in CI from the `BANNED_TERMS` secret. Matching ignores case and accents.
 
+## Security policy
+
+Every page carries a content security policy (`astro.config.mjs`) as a `<meta>` tag, since GitHub Pages cannot set
+response headers. Scripts and styles run only from this site or by the hash Astro computes for each inline one, so
+injected code does not run; the form may send only to Formspree. A browser test fails if the policy is missing, allows
+inline code wholesale, or blocks anything the site itself uses. When adding a third-party script, image or form
+endpoint, add its host to the policy in the same change.
+
 ## Dependencies
 
 Dependabot proposes updates every Monday (`.github/dependabot.yml`): minor and patch updates together in one pull

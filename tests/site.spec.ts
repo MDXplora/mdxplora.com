@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
 
 const pages = ['/', '/compute/', '/services/', '/contact/', '/privacy/'];
@@ -19,6 +20,37 @@ for (const path of pages) {
     expect(errors).toEqual([]);
   });
 }
+
+test('every page carries the security policy and nothing on it breaks the policy', async ({ page }) => {
+  const violations: string[] = [];
+  await page.exposeFunction('reportViolation', (v: string) => violations.push(v));
+  await page.addInitScript(() =>
+    document.addEventListener('securitypolicyviolation', (e) =>
+      (window as unknown as { reportViolation: (v: string) => void }).reportViolation(
+        `${e.violatedDirective} blocked ${e.blockedURI || 'inline'}`,
+      ),
+    ),
+  );
+  for (const path of [...pages, '/no-such-page/']) {
+    await page.goto(path);
+    const policy = await page.locator('meta[http-equiv="content-security-policy"]').getAttribute('content');
+    for (const directive of ["default-src 'self'", "object-src 'none'", "base-uri 'self'", 'script-src ']) {
+      expect(policy, path).toContain(directive);
+    }
+    expect(policy, `${path} allows no inline code by blanket permission`).not.toContain('unsafe-inline');
+    // Every inline script the page runs is allowed by its own hash, wherever it sits in the page.
+    const inline = await page.locator('script:not([src]):not([type="application/ld+json"])').allTextContents();
+    for (const source of inline) {
+      const hash = `'sha256-${createHash('sha256').update(source).digest('base64')}'`;
+      expect(policy, `${path}: ${source.slice(0, 60)}`).toContain(hash);
+    }
+    await expect(page.locator('meta[name="referrer"]')).toHaveAttribute('content', 'strict-origin-when-cross-origin');
+  }
+  // Give late scripts (the hero fluid, the form) a moment to run.
+  await page.goto('/');
+  await page.waitForTimeout(500);
+  expect(violations).toEqual([]);
+});
 
 test('each page has its own link preview image, matching its headline', async ({ page, request }) => {
   for (const path of pages) {

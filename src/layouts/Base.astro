@@ -9,6 +9,7 @@ import SiteHeader from '../components/SiteHeader.astro';
 import { cardFor } from '../data/cards';
 import { site } from '../data/site';
 import { iconVersion } from '../lib/icons';
+import { hashOf, themeScript } from '../lib/inline-scripts';
 
 interface Props {
   title?: string;
@@ -21,6 +22,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 const card = cardFor(Astro.url.pathname);
 const image = new URL(`/og/${card.slug}.png`, Astro.site);
 const imageAlt = `${site.name}: ${card.title}`;
+
+// Inline scripts run only if the security policy lists their hash (see astro.config.mjs).
+Astro.csp?.insertScriptHash(hashOf(themeScript));
 ---
 
 <!doctype html>
@@ -28,6 +32,8 @@ const imageAlt = `${site.name}: ${card.title}`;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Other sites see only mdxplora.com, not the page a visitor came from. -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
@@ -53,25 +59,7 @@ const imageAlt = `${site.name}: ${card.title}`;
     <meta name="twitter:image" content={image} />
     <meta name="twitter:image:alt" content={imageAlt} />
     <!-- The stored theme choice, applied before first paint. -->
-    <script is:inline>
-      (() => {
-        let stored = '';
-        try {
-          stored = localStorage.getItem('mdxplora-theme') || '';
-        } catch {}
-        const theme =
-          stored === 'light' || stored === 'dark'
-            ? stored
-            : matchMedia('(prefers-color-scheme: light)').matches
-              ? 'light'
-              : 'dark';
-        document.documentElement.dataset.theme = theme;
-        // The browser's own chrome (address bar, status bar) follows the page.
-        document
-          .querySelector('meta[name="theme-color"]')
-          ?.setAttribute('content', theme === 'light' ? '#fafbfe' : '#070b16');
-      })();
-    </script>
+    <script is:inline set:html={themeScript} />
     <slot name="head" />
   </head>
   <body>
