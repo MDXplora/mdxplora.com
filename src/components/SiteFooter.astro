@@ -1,6 +1,6 @@
 ---
 import Logo from './Logo.astro';
-import { engine, footer, site } from '../data/site';
+import { footer, site } from '../data/site';
 
 const year = new Date().getFullYear();
 ---
@@ -27,10 +27,6 @@ const year = new Date().getFullYear();
   <div class="container legal">
     <p>
       &copy; {year} {site.name}
-    </p>
-    <p>
-      MDXplora runs <a href={engine.repository}>{engine.name}</a>, open-source software under the {engine.license}{' '}
-      license.
     </p>
   </div>
 </footer>

@@ -31,15 +31,18 @@ test('a chosen theme is remembered on the next page', async ({ page, isMobile })
   await expect(page.locator('html')).toHaveAttribute('data-theme', after!);
 });
 
-test('the site is about MDXplora: the engine is named only in the footer and the answers', async ({ page }) => {
-  for (const path of ['/', '/compute/', '/services/', '/contact/', '/privacy/']) {
+test('the engine is named only where results must cite it, and nothing links to its repository', async ({ page }) => {
+  for (const path of ['/', '/compute/', '/services/', '/contact/', '/privacy/', '/no-such-page/']) {
     await page.goto(path);
     const elsewhere = await page.evaluate(() => {
       const copy = document.body.cloneNode(true) as HTMLElement;
-      copy.querySelectorAll('footer, #faq').forEach((el) => el.remove());
+      copy.querySelector('#cite')?.remove();
+      copy.querySelectorAll('script').forEach((el) => el.remove());
       return copy.textContent ?? '';
     });
     expect(elsewhere, path).not.toContain('FastMDXplora');
+    const repositoryLinks = await page.locator('a[href^="https://github.com/"]').count();
+    expect(repositoryLinks, path).toBe(0);
   }
 });
 

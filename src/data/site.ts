@@ -8,12 +8,9 @@ export const site = {
   formspreeId: import.meta.env.PUBLIC_FORMSPREE_ID as string | undefined,
 } as const;
 
-// The open-source software MDXplora runs. Named only where a user needs it:
-// the footer, and the answers on running without us and on citing results.
+// The software MDXplora computes with, named only where a user must cite it.
 export const engine = {
   name: 'FastMDXplora',
-  repository: 'https://github.com/aai-research-lab/FastMDXplora',
-  license: 'MIT',
   // Permanent identifiers: the paper, and the archive record that lists every release.
   paperDoi: '10.1002/jcc.70350',
   archiveDoi: '10.5281/zenodo.17510591',

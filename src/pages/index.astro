@@ -256,11 +256,8 @@ const faq = [
         </a>
       </div>
       <div class="card owned">
-        <h3>Your studies stay yours</h3>
-        <p>
-          Every study can be downloaded whole: the Config, the data, the report and the Manifest. Nothing you run on
-          MDXplora depends on MDXplora to be run again.
-        </p>
+        <h3>Your data stays yours</h3>
+        <p>Every study can be downloaded whole: the Config, the data, the report and the Manifest.</p>
       </div>
     </div>
   </section>
@@ -305,19 +302,12 @@ const faq = [
             <p>{item.a}</p>
           </details>
         ))}
-        <details>
-          <summary>What does MDXplora run on?</summary>
-          <p>
-            MDXplora runs <a href={engine.repository}>{engine.name}</a>, open-source molecular dynamics software under
-            the MIT license. Anything you run on MDXplora can be run again without us.
-          </p>
-        </details>
-        <details>
+        <details id="cite">
           <summary>How do I cite results?</summary>
           <p>
-            Cite the paper describing the software, <a href={`https://doi.org/${engine.paperDoi}`}>{engine.paperDoi}</a>
-            , and the software release named in your study’s Manifest, archived under
-            <a href={`https://doi.org/${engine.archiveDoi}`}>{engine.archiveDoi}</a>.
+            Results produced on MDXplora are computed with {engine.name}. Cite its paper (
+            <a href={`https://doi.org/${engine.paperDoi}`}>{engine.paperDoi}</a>) and the release named in your study’s
+            Manifest (<a href={`https://doi.org/${engine.archiveDoi}`}>{engine.archiveDoi}</a>).
           </p>
         </details>
       </div>
