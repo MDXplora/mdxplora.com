@@ -34,12 +34,12 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     <meta name="twitter:card" content="summary" />
-    <!-- The same stored choice the docs use, applied before first paint. -->
+    <!-- The stored theme choice, applied before first paint. -->
     <script is:inline>
       (() => {
         let stored = '';
         try {
-          stored = localStorage.getItem('starlight-theme') || '';
+          stored = localStorage.getItem('mdxplora-theme') || '';
         } catch {}
         const theme =
           stored === 'light' || stored === 'dark'

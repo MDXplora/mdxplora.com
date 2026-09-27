@@ -1,11 +1,5 @@
 node_modules/
 dist/
 .astro/
-.cache/
 test-results/
 playwright-report/
-
-# Written by scripts/sync-release.mjs from the FastMDXplora release
-src/content/docs/docs/
-src/data/release.json
-src/data/sidebar.json

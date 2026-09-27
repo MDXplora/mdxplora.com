@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-const pages = ['/', '/compute/', '/services/', '/contact/', '/privacy/', '/docs/', '/docs/api/'];
+const pages = ['/', '/compute/', '/services/', '/contact/', '/privacy/'];
 
 for (const path of pages) {
   test(`${path} loads cleanly and fits the screen`, async ({ page }) => {
@@ -20,14 +20,14 @@ for (const path of pages) {
   });
 }
 
-test('a theme chosen on the site carries into the docs', async ({ page, isMobile }) => {
+test('a chosen theme is remembered on the next page', async ({ page, isMobile }) => {
   test.skip(isMobile, 'the toggle sits in the header on wide screens');
   await page.goto('/');
   const before = await page.locator('html').getAttribute('data-theme');
   await page.locator('.theme-toggle').first().click();
   const after = await page.locator('html').getAttribute('data-theme');
   expect(after).not.toBe(before);
-  await page.goto('/docs/');
+  await page.goto('/services/');
   await expect(page.locator('html')).toHaveAttribute('data-theme', after!);
 });
 
@@ -43,16 +43,14 @@ test('the site is about MDXplora: the engine is named only in the footer and the
   }
 });
 
+test('an unknown address gets the not-found page', async ({ page }) => {
+  const response = await page.goto('/no-such-page/');
+  expect(response?.status()).toBe(404);
+  await expect(page.getByRole('link', { name: 'Back to the home page' })).toBeVisible();
+});
+
 test('a link from another page chooses the contact topic', async ({ page }) => {
   await page.goto('/contact/?topic=training');
   await expect(page.locator('select[name="topic"]')).toHaveValue('training');
   await expect(page.locator('input[name="_gotcha"]')).not.toBeInViewport();
-});
-
-test('the docs are searchable and list every page', async ({ page, isMobile }) => {
-  test.skip(isMobile, 'the sidebar is behind the menu on phones');
-  await page.goto('/docs/');
-  await expect(page.locator('site-search button').first()).toBeVisible();
-  const links = await page.locator('.sidebar-content a').count();
-  expect(links).toBeGreaterThan(20);
 });

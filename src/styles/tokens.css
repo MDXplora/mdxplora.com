@@ -1,9 +1,8 @@
 /*
- * Design tokens, shared by the marketing pages and the docs.
+ * Design tokens.
  *
- * Both themes are defined here once. The docs read them through Starlight's
- * own variables (the --sl-* block at the end), so a colour changed here
- * changes everywhere.
+ * Both themes are defined here once, so a colour changed here changes
+ * everywhere.
  */
 
 :root {
@@ -67,37 +66,4 @@
   --particle: 36, 81, 214;
   --bond: 20, 150, 140;
   --shadow: 0 1px 2px rgba(11, 17, 34, 0.04), 0 18px 40px -24px rgba(11, 17, 34, 0.25);
-}
-
-/* Starlight, mapped onto the tokens above. */
-:root,
-:root[data-theme='dark'] {
-  --sl-font: var(--font-sans);
-  --sl-font-mono: var(--font-mono);
-  --sl-color-accent-low: #0f1f4d;
-  --sl-color-accent: #4c7dff;
-  --sl-color-accent-high: #c9d7ff;
-  --sl-color-white: #ffffff;
-  --sl-color-gray-1: #e6e9f2;
-  --sl-color-gray-2: #c3c9da;
-  --sl-color-gray-3: #9aa3bd;
-  --sl-color-gray-4: #6b7596;
-  --sl-color-gray-5: #2a3454;
-  --sl-color-gray-6: #141d35;
-  --sl-color-black: #0b1122;
-}
-
-:root[data-theme='light'] {
-  --sl-color-accent-low: #dfe7ff;
-  --sl-color-accent: #2451d6;
-  --sl-color-accent-high: #14307f;
-  --sl-color-white: #0b1122;
-  --sl-color-gray-1: #1c2540;
-  --sl-color-gray-2: #313b5a;
-  --sl-color-gray-3: #525b76;
-  --sl-color-gray-4: #7e87a3;
-  --sl-color-gray-5: #c5cadb;
-  --sl-color-gray-6: #eceff6;
-  --sl-color-gray-7: #f5f7fb;
-  --sl-color-black: #ffffff;
 }

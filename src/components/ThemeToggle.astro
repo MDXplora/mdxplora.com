@@ -1,5 +1,5 @@
 ---
-// Switches between light and dark and stores the choice where the docs read it.
+// Switches between light and dark and remembers the choice.
 ---
 
 <button class="theme-toggle" type="button" aria-label="Switch colour theme">
@@ -29,7 +29,7 @@
       const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
       document.documentElement.dataset.theme = next;
       try {
-        localStorage.setItem('starlight-theme', next);
+        localStorage.setItem('mdxplora-theme', next);
       } catch {}
     });
   });

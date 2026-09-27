@@ -1,35 +1,13 @@
 # mdxplora.com
 
-The MDXplora website and the FastMDXplora documentation, built with Astro and Starlight and served by GitHub Pages.
-
-## Where the content comes from
-
-Nothing about the package is written here by hand. On every build, `scripts/sync-release.mjs`:
-
-- reads the released version from conda-forge,
-- clones FastMDXplora at that version's tag and converts its `docs/` into the pages under `/docs/`, with the navigation
-  taken from the package's own toctree,
-- renders the API reference from the package's docstrings (`scripts/api_reference.py`, which reads the source without
-  importing it),
-- reads the citation from `CITATION.cff` at the tag and the release DOI from Zenodo.
-
-A source that cannot be read stops the build. The daily scheduled build publishes a new release without a commit here.
-
-To preview docs from a local FastMDXplora checkout instead of the release:
-
-```bash
-FASTMDXPLORA_SOURCE=~/path/to/FastMDXplora npm run dev
-```
-
-Every page then carries a notice that it is a preview.
+The MDXplora website, built with Astro and served by GitHub Pages.
 
 ## Working on the site
 
-Needs Node 22 and Python 3.10 or later.
+Needs Node 22.
 
 ```bash
 npm ci
-python3 -m pip install -r scripts/requirements.txt
 npm run dev          # http://localhost:4321
 ```
 

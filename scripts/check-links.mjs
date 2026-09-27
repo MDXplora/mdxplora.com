@@ -1,8 +1,6 @@
 // Every internal link in the built site must lead to a page that exists.
 //
-// The docs are already checked by starlight-links-validator during the build;
-// this covers the rest of the site, including links from the pages into the
-// docs. External links are not fetched.
+// External links are not fetched.
 //
 // Usage: node scripts/check-links.mjs [dist]
 
