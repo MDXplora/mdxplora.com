@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-const pages = ['/', '/hosted/', '/services/', '/cite/', '/contact/', '/privacy/', '/docs/', '/docs/api/'];
+const pages = ['/', '/compute/', '/services/', '/contact/', '/privacy/', '/docs/', '/docs/api/'];
 
 for (const path of pages) {
   test(`${path} loads cleanly and fits the screen`, async ({ page }) => {
@@ -20,13 +20,6 @@ for (const path of pages) {
   });
 }
 
-test('the release shown is the one conda-forge serves', async ({ page, request }) => {
-  const conda = await request.get('https://api.anaconda.org/package/conda-forge/fastmdxplora');
-  const { latest_version } = await conda.json();
-  await page.goto('/');
-  await expect(page.locator('.hero .pill')).toContainText(latest_version);
-});
-
 test('a theme chosen on the site carries into the docs', async ({ page, isMobile }) => {
   test.skip(isMobile, 'the toggle sits in the header on wide screens');
   await page.goto('/');
@@ -38,14 +31,16 @@ test('a theme chosen on the site carries into the docs', async ({ page, isMobile
   await expect(page.locator('html')).toHaveAttribute('data-theme', after!);
 });
 
-test('the Config tabs switch with the keyboard', async ({ page }) => {
-  await page.goto('/');
-  const gui = page.getByRole('tab', { name: 'GUI' });
-  await gui.focus();
-  await page.keyboard.press('ArrowRight');
-  await expect(page.getByRole('tab', { name: 'CLI' })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('#panel-cli')).toBeVisible();
-  await expect(page.locator('#panel-gui')).toBeHidden();
+test('the site is about MDXplora: the engine is named only in the footer and the answers', async ({ page }) => {
+  for (const path of ['/', '/compute/', '/services/', '/contact/', '/privacy/']) {
+    await page.goto(path);
+    const elsewhere = await page.evaluate(() => {
+      const copy = document.body.cloneNode(true) as HTMLElement;
+      copy.querySelectorAll('footer, #faq').forEach((el) => el.remove());
+      return copy.textContent ?? '';
+    });
+    expect(elsewhere, path).not.toContain('FastMDXplora');
+  }
 });
 
 test('a link from another page chooses the contact topic', async ({ page }) => {

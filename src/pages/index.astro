@@ -1,7 +1,7 @@
 ---
 import ParticleField from '../components/ParticleField.astro';
 import Base from '../layouts/Base.astro';
-import { release, site } from '../data/site';
+import { engine, site } from '../data/site';
 
 const phases = [
   {
@@ -51,7 +51,7 @@ const studies = [
   },
   {
     title: 'Free energy along a coordinate',
-    text: 'Umbrella sampling, metadynamics and steered MD from a named collective variable, without writing PLUMED input. Each result says what it is and what it is not.',
+    text: 'Umbrella sampling, metadynamics and steered MD from a named collective variable. Each result says what it is and what it is not.',
   },
   {
     title: 'A trajectory you already have',
@@ -65,30 +65,31 @@ const studies = [
 
 const ways = [
   {
-    id: 'gui',
-    label: 'GUI',
-    lead: 'A form in a browser, generated from the schema. Every setting visible, explained and checked before you leave the page.',
-    code: `<span class="prompt">$ </span>fastmdx gui`,
+    title: 'Describe it',
+    text: 'Say what you want in a sentence. The Agent writes the study, and the same validator that checks every study checks it before anything runs.',
   },
   {
-    id: 'cli',
-    label: 'CLI',
-    lead: 'The same settings as flags, generated from the same declaration. Or a file, run as it is.',
-    code: `<span class="prompt">$ </span>fastmdx explore --config study.yml --output runs/study`,
+    title: 'Build it',
+    text: 'A form with every setting visible and explained, checked as you go, for when you know exactly what you want.',
   },
   {
-    id: 'python',
-    label: 'Python',
-    lead: 'The same settings as a dictionary, for building studies programmatically.',
-    code: `<span class="key">from</span> fastmdxplora <span class="key">import</span> FastMDXplora
+    title: 'Bring it',
+    text: 'Upload a Config you already have. It runs as written, and every study can be downloaded as a Config again.',
+  },
+];
 
-FastMDXplora(config=<span class="string">"study.yml"</span>).explore()`,
+const faq = [
+  {
+    q: 'Can I use MDXplora today?',
+    a: 'MDXplora is in early access. Join the list and we will be in touch as places open, starting with a small number of groups.',
   },
   {
-    id: 'agent',
-    label: 'Agent',
-    lead: 'The FastMDXplora Agent writes a Config from a sentence. What it writes goes through the same validator, with the same refusals, as a Config typed by hand.',
-    code: `<span class="prompt">$ </span>fastmdx agent <span class="string">"simulate trypsin with benzamidine bound at pH 6.5 for 100 ns"</span>`,
+    q: 'Do I need a GPU?',
+    a: 'No. Run on GPUs we provide, or connect your own workstation or cluster and choose for each study where it runs.',
+  },
+  {
+    q: 'Where does my data go?',
+    a: 'Studies run on our GPUs are stored for your account. Studies run on your own machines can keep their trajectories on your own storage, with only the records and reports shown in MDXplora.',
   },
 ];
 ---
@@ -98,49 +99,62 @@ FastMDXplora(config=<span class="string">"study.yml"</span>).explore()`,
     <ParticleField />
     <div class="container hero-inner">
       <div class="hero-copy">
-        <a class="pill" href={`${release.repository}/releases/tag/${release.tag}`}>
-          <span class="dot"></span> FastMDXplora {release.version} is out
+        <a class="pill" href="/contact/?topic=early-access">
+          <span class="dot"></span> Early access is open
         </a>
         <h1>
           From a PDB code to <span class="gradient-text">publishable molecular dynamics</span>
         </h1>
         <p class="support">{site.support}</p>
         <p class="lead">
-          Give FastMDXplora a structure or a four-character PDB code. It prepares the system, runs the dynamics,
-          analyses the trajectory and writes the study up. Where the structure does not say enough, it stops and says
-          why.
+          MDXplora prepares the system, runs the dynamics, analyses the trajectory and writes the study up, in your
+          browser. Where the structure does not say enough, it stops and says why.
         </p>
         <div class="cta">
-          <a class="button button-primary" href="/docs/installation/">
-            Install FastMDXplora
+          <a class="button button-primary" href="/contact/?topic=early-access">
+            Join early access
           </a>
-          <a class="button button-secondary" href="/docs/">
-            Read the docs
+          <a class="button button-secondary" href="#how">
+            How it works
           </a>
         </div>
       </div>
 
-      <figure class="terminal" aria-label="Installing FastMDXplora and running a study">
-        <div class="terminal-bar">
+      <figure class="preview" aria-label="A preview of a study being written in MDXplora">
+        <div class="preview-bar">
           <span></span>
           <span></span>
           <span></span>
+          <span class="preview-title">New study</span>
         </div>
-        <pre class="code"><code><span class="prompt">$ </span>conda create -n fastmdxplora \
-    -c conda-forge fastmdxplora
-<span class="prompt">$ </span>conda activate fastmdxplora
-<span class="prompt">$ </span>fastmdx explore --system 181L
-
-<span class="accent">setup</span>  <span class="muted">→</span>  <span class="accent">simulation</span>  <span class="muted">→</span>  <span class="accent">analysis</span>  <span class="muted">→</span>  <span class="accent">report</span></code></pre>
-        <figcaption>
-          T4 lysozyme from its PDB code: the benzene in its cavity parameterised, the dynamics run, the residues holding
-          the ligand found, and the study written up.
-        </figcaption>
+        <div class="preview-body">
+          <p class="bubble">Simulate trypsin with benzamidine bound at pH 6.5 for 100 ns</p>
+          <div class="proposal">
+            <div class="proposal-head">
+              <span>Config</span>
+              <span class="valid">Validated</span>
+            </div>
+            <pre class="code"><code><span class="key">systems</span>:
+  - <span class="key">system</span>: <span class="string">3PTB</span>
+<span class="key">setup</span>:
+  <span class="key">ph</span>: <span class="string">6.5</span>
+  <span class="key">forcefield</span>: <span class="string">amber-openff</span>
+  <span class="key">ligand_name</span>: <span class="string">BEN</span>
+<span class="key">simulation</span>:
+  <span class="key">duration_ns</span>: <span class="string">100</span></code></pre>
+          </div>
+          <div class="run-on">
+            <span class="run-label">Run on</span>
+            <span class="chip chip-on">MDXplora GPU</span>
+            <span class="chip">Your workstation</span>
+          </div>
+        </div>
+        <figcaption>A preview of MDXplora, which is in early access.</figcaption>
       </figure>
     </div>
   </section>
 
-  <section class="section">
+  <section class="section" id="how">
     <div class="container">
       <div class="section-head">
         <span class="eyebrow">How a study runs</span>
@@ -162,21 +176,22 @@ FastMDXplora(config=<span class="string">"study.yml"</span>).explore()`,
           </li>
         ))}
       </ol>
-      <div class="config-row">
-        <div>
-          <h3>That is a complete study.</h3>
-          <p>
-            Everything unnamed takes a documented default, and every run writes <code>resolved_config.yml</code>, so the
-            exact study can be run again by anyone holding that one file.
-          </p>
-          <a class="text-link" href="/docs/config/">
-            The FastMDXplora Config →
-          </a>
-        </div>
-        <pre class="code"><code><span class="key">systems</span>:
-  - <span class="key">system</span>: <span class="string">181L</span>
-<span class="key">simulation</span>:
-  <span class="key">duration_ns</span>: <span class="string">100</span></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Three ways to start</span>
+        <h2>Describe it, build it, or bring it.</h2>
+      </div>
+      <div class="grid-3">
+        {ways.map((w) => (
+          <article class="card">
+            <h3>{w.title}</h3>
+            <p>{w.text}</p>
+          </article>
+        ))}
       </div>
     </div>
   </section>
@@ -198,7 +213,7 @@ FastMDXplora(config=<span class="string">"study.yml"</span>).explore()`,
     </div>
   </section>
 
-  <section class="section refuses">
+  <section class="section">
     <div class="container split">
       <div class="section-head">
         <span class="eyebrow">Scientific integrity</span>
@@ -212,51 +227,17 @@ FastMDXplora(config=<span class="string">"study.yml"</span>).explore()`,
           <li>Biased averages are corrected to equilibrium where the bias allows, and labelled where it does not.</li>
           <li>A standard error the trajectory cannot support is withheld, not printed beside a caveat.</li>
         </ul>
-        <a class="text-link" href="/docs/refusals/">
-          FastMDXplora refusals →
-        </a>
       </div>
-      <pre class="code"><code><span class="prompt">$ </span>fastmdx explore --config study.yml
-<span class="string">fastmdx: Unknown setup option 'pH' (did you mean 'ph'?).</span>
-<span class="string">Valid options: agent, box_shape, …</span>
-
-<span class="comment"># in a program, for box_shape: dodecahedran</span>
-refusal.code       <span class="comment"># 'config.option.not_permitted'</span>
-refusal.kind       <span class="comment"># 'structural'</span>
-refusal.permitted  <span class="comment"># ('cube', 'dodecahedron', 'octahedron')</span></code></pre>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="container">
-      <div class="section-head">
-        <span class="eyebrow">Four ways in</span>
-        <h2>Write a Config the way you work.</h2>
-        <p>
-          The GUI, the CLI and the Python API are generated from one declaration, so none is a subset of another. The
-          Agent is reachable through all three.
-        </p>
-      </div>
-      <div class="tabs" data-tabs>
-        <div role="tablist" aria-label="Ways to write a Config" class="tablist">
-          {ways.map((w, i) => (
-            <button
-              role="tab"
-              id={`tab-${w.id}`}
-              aria-controls={`panel-${w.id}`}
-              aria-selected={i === 0 ? 'true' : 'false'}
-              tabindex={i === 0 ? 0 : -1}
-            >
-              {w.label}
-            </button>
-          ))}
+      <div class="refusal" role="img" aria-label="An example of a study that was refused, with the reason">
+        <div class="refusal-head">
+          <span class="refusal-mark">!</span>
+          <span>Setup stopped</span>
         </div>
-        {ways.map((w, i) => (
-          <div role="tabpanel" id={`panel-${w.id}`} aria-labelledby={`tab-${w.id}`} hidden={i !== 0} class="panel">
-            <p>{w.lead}</p>
-            <pre class="code"><code set:html={w.code} /></pre>
-          </div>
-        ))}
+        <p>
+          Ligand BEN: the study states a net charge of +1, and the chemistry file carries formal charges summing to 0.
+          The file is the chemistry, so the two cannot both stand.
+        </p>
+        <p class="refusal-fix">Supply the ligand in the protonation state the study means, then run again.</p>
       </div>
     </div>
   </section>
@@ -264,121 +245,85 @@ refusal.permitted  <span class="comment"># ('cube', 'dodecahedron', 'octahedron'
   <section class="section">
     <div class="container split">
       <div class="section-head">
-        <span class="eyebrow">Anywhere</span>
-        <h2>Design it here. Run it there.</h2>
+        <span class="eyebrow">Compute</span>
+        <h2>Our GPUs, or yours.</h2>
         <p>
-          The Config is the portable unit. Design a study in the GUI on a laptop, then run the same file on a lab
-          workstation or a cluster. <code>fastmdx remote</code> reaches those machines with your own
-          <code>ssh</code>, installs where you agree to, and brings the results back.
+          Run on GPUs we provide, or connect your own workstation or cluster in one command. Your machine asks MDXplora
+          for work, so nothing reaches into your network.
         </p>
-        <a class="text-link" href="/docs/remote/">
-          Other machines →
+        <a class="text-link" href="/compute/">
+          How your own compute connects →
         </a>
       </div>
-      <pre class="code"><code><span class="prompt">$ </span>fastmdx remote --machine gpu-box
-<span class="prompt">$ </span>fastmdx remote send -c study.yml --machine gpu-box
-<span class="prompt">$ </span>fastmdx remote status
-<span class="prompt">$ </span>fastmdx remote fetch <span class="muted">&lt;job&gt;</span></code></pre>
-    </div>
-  </section>
-
-  <section class="section open">
-    <div class="container">
-      <div class="section-head">
-        <span class="eyebrow">Open source</span>
-        <h2>Open, installable, citable.</h2>
-        <p>FastMDXplora is free to use, read and change. Every release is archived with its own DOI.</p>
-      </div>
-      <dl class="facts">
-        <div>
-          <dt>License</dt>
-          <dd>{release.software.license}</dd>
-        </div>
-        <div>
-          <dt>Install</dt>
-          <dd>conda-forge</dd>
-        </div>
-        <div>
-          <dt>Latest release</dt>
-          <dd>
-            <a href={`${release.repository}/releases/tag/${release.tag}`}>{release.version}</a>
-          </dd>
-        </div>
-        <div>
-          <dt>Archive</dt>
-          <dd>
-            <a href={`https://doi.org/${release.doi}`}>{release.doi}</a>
-          </dd>
-        </div>
-      </dl>
-      <div class="cta">
-        <a class="button button-secondary" href={release.repository}>
-          View the source
-        </a>
-        <a class="button button-secondary" href="/cite/">
-          How to cite
-        </a>
+      <div class="card owned">
+        <h3>Your studies stay yours</h3>
+        <p>
+          Every study can be downloaded whole: the Config, the data, the report and the Manifest. Nothing you run on
+          MDXplora depends on MDXplora to be run again.
+        </p>
       </div>
     </div>
   </section>
 
   <section class="section">
-    <div class="container">
+    <div class="container split">
       <div class="section-head">
-        <span class="eyebrow">MDXplora</span>
-        <h2>When you would rather not run it yourself.</h2>
+        <span class="eyebrow">Services</span>
+        <h2>When you would rather we ran it.</h2>
+        <p>For groups without someone to run molecular dynamics, and for labs that depend on it.</p>
+        <a class="text-link" href="/services/">
+          Services →
+        </a>
       </div>
-      <div class="grid-2">
-        <article class="card offer">
-          <span class="pill">
-            <span class="dot"></span> Early access
-          </span>
-          <h3>MDXplora, hosted</h3>
+      <ul class="card offers">
+        <li>
+          <h3>Studies run for you</h3>
+          <p>You get the report, the data and the full record behind them.</p>
+        </li>
+        <li>
+          <h3>Training for your group</h3>
+          <p>From a first study to your own campaigns, on your own systems.</p>
+        </li>
+        <li>
+          <h3>Support</h3>
+          <p>For your machines, for studies that refuse, and for results that need a second pair of eyes.</p>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" id="faq">
+    <div class="container faq">
+      <div class="section-head">
+        <span class="eyebrow">Questions</span>
+        <h2>Before you ask.</h2>
+      </div>
+      <div class="faq-list">
+        {faq.map((item) => (
+          <details>
+            <summary>{item.q}</summary>
+            <p>{item.a}</p>
+          </details>
+        ))}
+        <details>
+          <summary>What does MDXplora run on?</summary>
           <p>
-            In development: the Agent and the GUI in your browser, with nothing to install, running on GPUs we provide
-            or on your own workstation or cluster.
+            MDXplora runs <a href={engine.repository}>{engine.name}</a>, open-source molecular dynamics software under
+            the MIT license. Anything you run on MDXplora can be run again without us.
           </p>
-          <a class="text-link" href="/hosted/">
-            How hosting will work →
-          </a>
-        </article>
-        <article class="card offer">
-          <span class="pill">Services</span>
-          <h3>Work with us</h3>
-          <p>Studies run for you, training for your group, and support for labs that depend on FastMDXplora.</p>
-          <a class="text-link" href="/services/">
-            Services →
-          </a>
-        </article>
+        </details>
+        <details>
+          <summary>How do I cite results?</summary>
+          <p>
+            Cite the paper describing the software, <a href={`https://doi.org/${engine.paperDoi}`}>{engine.paperDoi}</a>
+            , and the software release named in your study’s Manifest, archived under
+            <a href={`https://doi.org/${engine.archiveDoi}`}>{engine.archiveDoi}</a>.
+          </p>
+        </details>
       </div>
     </div>
   </section>
 </Base>
-
-<script>
-  document.querySelectorAll<HTMLElement>('[data-tabs]').forEach((root) => {
-    const tabs = Array.from(root.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
-    const select = (tab: HTMLButtonElement) => {
-      for (const t of tabs) {
-        const on = t === tab;
-        t.setAttribute('aria-selected', String(on));
-        t.tabIndex = on ? 0 : -1;
-        const panel = document.getElementById(t.getAttribute('aria-controls') ?? '');
-        if (panel) panel.hidden = !on;
-      }
-    };
-    tabs.forEach((tab, i) => {
-      tab.addEventListener('click', () => select(tab));
-      tab.addEventListener('keydown', (event) => {
-        const move = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
-        if (!move) return;
-        const next = tabs[(i + move + tabs.length) % tabs.length];
-        select(next);
-        next.focus();
-      });
-    });
-  });
-</script>
 
 <style>
   .hero {
@@ -424,35 +369,102 @@ refusal.permitted  <span class="comment"># ('cube', 'dodecahedron', 'octahedron'
     flex-wrap: wrap;
     gap: 0.75rem;
   }
-  .terminal {
-    border: 1px solid #1f2a47;
+
+  .preview {
+    border: 1px solid var(--border-strong);
     border-radius: var(--radius-l);
-    background: var(--code-bg);
-    box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.6);
+    background: var(--bg-raised);
+    box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.55);
     overflow: hidden;
   }
-  .terminal-bar {
+  .preview-bar {
     display: flex;
+    align-items: center;
     gap: 6px;
     padding: 0.8rem 1rem;
-    border-bottom: 1px solid #1a2440;
+    border-bottom: 1px solid var(--border);
   }
-  .terminal-bar span {
+  .preview-bar > span:not(.preview-title) {
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: #26314f;
+    background: var(--border-strong);
   }
-  .terminal .code {
+  .preview-title {
+    margin-left: 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--fg-subtle);
+  }
+  .preview-body {
+    display: grid;
+    gap: 1rem;
+    padding: 1.25rem;
+  }
+  .bubble {
+    justify-self: end;
+    max-width: 85%;
+    padding: 0.7rem 1rem;
+    border-radius: 14px 14px 4px 14px;
+    background: var(--accent);
+    color: var(--accent-fg);
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+  .proposal {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    overflow: hidden;
+  }
+  .proposal-head {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--fg-muted);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .valid {
+    color: var(--teal);
+  }
+  .valid::before {
+    content: '✓ ';
+  }
+  .proposal .code {
     border: 0;
     border-radius: 0;
-    font-size: 0.82rem;
+    font-size: 0.8rem;
   }
-  .terminal figcaption {
-    padding: 0.9rem 1.4rem 1.2rem;
-    border-top: 1px solid #1a2440;
-    color: #8b95b3;
-    font-size: 0.85rem;
+  .run-on {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+  }
+  .run-label {
+    color: var(--fg-subtle);
+    font-weight: 600;
+    margin-right: 0.25rem;
+  }
+  .chip {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    color: var(--fg-muted);
+  }
+  .chip-on {
+    border-color: var(--accent);
+    color: var(--fg);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+  .preview figcaption {
+    padding: 0.75rem 1.25rem 1rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--fg-subtle);
   }
 
   .pipeline {
@@ -502,28 +514,6 @@ refusal.permitted  <span class="comment"># ('cube', 'dodecahedron', 'octahedron'
     font-size: 0.9rem;
     color: var(--fg-muted);
   }
-  .config-row {
-    margin-top: 2.5rem;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
-    align-items: center;
-  }
-  .config-row h3 {
-    font-size: 1.35rem;
-  }
-  .config-row p {
-    margin-top: 0.75rem;
-    color: var(--fg-muted);
-  }
-  .config-row :not(pre) > code,
-  .section-head :not(pre) > code {
-    font-size: 0.9em;
-    padding: 0.1em 0.35em;
-    border-radius: 5px;
-    background: var(--bg-sunken);
-    border: 1px solid var(--border);
-  }
   .text-link {
     display: inline-block;
     margin-top: 1.25rem;
@@ -566,85 +556,97 @@ refusal.permitted  <span class="comment"># ('cube', 'dodecahedron', 'octahedron'
     background: color-mix(in srgb, var(--teal) 20%, transparent);
     box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--teal) 70%, transparent);
   }
-
-  .tablist {
-    display: inline-flex;
-    gap: 0.25rem;
-    padding: 0.3rem;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: var(--bg-raised);
+  .refusal {
+    padding: 1.5rem;
+    border: 1px solid color-mix(in srgb, #f2a23a 45%, var(--border));
+    border-radius: var(--radius-l);
+    background: color-mix(in srgb, #f2a23a 6%, var(--surface));
+    box-shadow: var(--shadow);
   }
-  .tablist button {
-    border: 0;
-    border-radius: 999px;
-    padding: 0.5rem 1.1rem;
-    background: transparent;
-    color: var(--fg-muted);
-    font: inherit;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .tablist button[aria-selected='true'] {
-    background: var(--fg);
-    color: var(--bg);
-  }
-  .panel {
-    margin-top: 1.5rem;
-    display: grid;
-    grid-template-columns: 1fr 1.4fr;
-    gap: 2rem;
+  .refusal-head {
+    display: flex;
     align-items: center;
+    gap: 0.6rem;
+    font-weight: 700;
   }
-  .panel[hidden] {
-    display: none;
+  .refusal-mark {
+    display: inline-grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: #f2a23a;
+    color: #1a1204;
+    font-weight: 800;
+    font-size: 0.85rem;
   }
-  .panel p {
-    font-size: 1.05rem;
+  .refusal p {
+    margin-top: 0.9rem;
     color: var(--fg-muted);
   }
-
-  .facts {
+  .refusal .refusal-fix {
+    color: var(--fg);
+    font-weight: 500;
+  }
+  .owned h3 {
+    font-size: 1.3rem;
+  }
+  .offers {
+    list-style: none;
     margin: 0;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-l);
-    background: var(--surface);
-    overflow: hidden;
+    gap: 0;
+    padding: 0.5rem 1.75rem;
   }
-  .facts div {
-    padding: 1.5rem;
+  .offers li {
+    padding-block: 1.1rem;
   }
-  .facts div + div {
-    border-left: 1px solid var(--border);
+  .offers li + li {
+    border-top: 1px solid var(--border);
   }
-  .facts dt {
-    font-size: 0.8rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--fg-subtle);
-  }
-  .facts dd {
-    margin: 0.5rem 0 0;
-    font-size: 1.15rem;
-    font-weight: 600;
-    word-break: break-word;
-  }
-  .facts a {
-    text-decoration: none;
-  }
-  .open .cta {
-    margin-top: 1.5rem;
+  .offers p {
+    margin-top: 0.3rem;
   }
 
-  .offer .pill {
-    margin-bottom: 1.25rem;
+  .faq {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr;
+    gap: clamp(32px, 6vw, 72px);
   }
-  .offer h3 {
-    font-size: 1.4rem;
+  .faq .section-head {
+    margin-bottom: 0;
+  }
+  .faq-list details {
+    border-bottom: 1px solid var(--border);
+  }
+  .faq-list details:first-child {
+    border-top: 1px solid var(--border);
+  }
+  .faq-list summary {
+    padding: 1.15rem 0;
+    font-weight: 600;
+    font-size: 1.05rem;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .faq-list summary::-webkit-details-marker {
+    display: none;
+  }
+  .faq-list summary::after {
+    content: '+';
+    color: var(--fg-subtle);
+    font-weight: 400;
+  }
+  .faq-list details[open] summary::after {
+    content: '−';
+  }
+  .faq-list p {
+    padding-bottom: 1.25rem;
+    color: var(--fg-muted);
+    overflow-wrap: anywhere;
   }
 
   @media (max-width: 1060px) {
@@ -655,28 +657,13 @@ refusal.permitted  <span class="comment"># ('cube', 'dodecahedron', 'octahedron'
   @media (max-width: 900px) {
     .hero-inner,
     .split,
-    .config-row,
-    .panel {
+    .faq {
       grid-template-columns: 1fr;
-    }
-    .facts {
-      grid-template-columns: 1fr 1fr;
-    }
-    .facts div:nth-child(3) {
-      border-left: 0;
-    }
-    .facts div:nth-child(n + 3) {
-      border-top: 1px solid var(--border);
     }
   }
   @media (max-width: 560px) {
-    .pipeline,
-    .facts {
+    .pipeline {
       grid-template-columns: 1fr;
-    }
-    .facts div + div {
-      border-left: 0;
-      border-top: 1px solid var(--border);
     }
   }
 </style>

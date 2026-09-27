@@ -7,7 +7,7 @@ if (import.meta.env.PROD && !site.formspreeId) {
 }
 
 const topics = [
-  { value: 'early-access', label: 'Early access to hosted MDXplora' },
+  { value: 'early-access', label: 'Early access to MDXplora' },
   { value: 'study', label: 'A study run for us' },
   { value: 'training', label: 'Training for our group' },
   { value: 'support', label: 'Support' },
@@ -76,10 +76,8 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
         <p>
           <a href={`mailto:${site.email}`}>{site.email}</a>
         </p>
-        <h2>Found a bug?</h2>
-        <p>
-          FastMDXplora is developed in the open. Report it on <a href={`${site.github}/issues`}>GitHub</a>.
-        </p>
+        <h2>Joining early access?</h2>
+        <p>Tell us about the systems you study and the compute you have. It helps us decide who to bring in first.</p>
       </aside>
     </div>
   </section>

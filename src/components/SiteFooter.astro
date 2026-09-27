@@ -1,6 +1,6 @@
 ---
 import Logo from './Logo.astro';
-import { footer, release, site } from '../data/site';
+import { engine, footer, site } from '../data/site';
 
 const year = new Date().getFullYear();
 ---
@@ -10,9 +10,6 @@ const year = new Date().getFullYear();
     <div class="brand">
       <Logo id="logo-footer" />
       <p>{site.tagline}.</p>
-      <p class="release">
-        FastMDXplora <a href={`${release.repository}/releases/tag/${release.tag}`}>{release.version}</a> on conda-forge
-      </p>
     </div>
     {footer.map((column) => (
       <nav aria-label={column.title}>
@@ -31,7 +28,10 @@ const year = new Date().getFullYear();
     <p>
       &copy; {year} {site.name}
     </p>
-    <p>FastMDXplora is open-source software under the {release.software.license} license.</p>
+    <p>
+      MDXplora runs <a href={engine.repository}>{engine.name}</a>, open-source software under the {engine.license}{' '}
+      license.
+    </p>
   </div>
 </footer>
 
@@ -51,11 +51,6 @@ const year = new Date().getFullYear();
     margin-top: 1rem;
     color: var(--fg-muted);
     max-width: 30ch;
-  }
-  .brand .release {
-    margin-top: 0.5rem;
-    font-size: 0.85rem;
-    color: var(--fg-subtle);
   }
   h2 {
     font-size: 0.8rem;

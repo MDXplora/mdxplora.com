@@ -1,5 +1,3 @@
-import release from './release.json';
-
 export const site = {
   name: 'MDXplora',
   tagline: 'From a PDB code to publishable molecular dynamics',
@@ -8,34 +6,42 @@ export const site = {
   // Set as a repository variable for the deploy (see README). A production
   // build without it fails, so a form that cannot send is never published.
   formspreeId: import.meta.env.PUBLIC_FORMSPREE_ID as string | undefined,
-  github: release.repository,
+} as const;
+
+// The open-source software MDXplora runs. Named only where a user needs it:
+// the footer, and the answers on running without us and on citing results.
+export const engine = {
+  name: 'FastMDXplora',
+  repository: 'https://github.com/aai-research-lab/FastMDXplora',
+  license: 'MIT',
+  // Permanent identifiers: the paper, and the archive record that lists every release.
+  paperDoi: '10.1002/jcc.70350',
+  archiveDoi: '10.5281/zenodo.17510591',
 } as const;
 
 export const nav = [
-  { label: 'Docs', href: '/docs/' },
-  { label: 'Hosted', href: '/hosted/' },
+  { label: 'How it works', href: '/#how' },
+  { label: 'Compute', href: '/compute/' },
   { label: 'Services', href: '/services/' },
-  { label: 'Cite', href: '/cite/' },
+  { label: 'Contact', href: '/contact/' },
 ] as const;
 
 export const footer = [
   {
     title: 'Product',
     links: [
-      { label: 'Install', href: '/docs/installation/' },
-      { label: 'Your first study', href: '/docs/first-study/' },
-      { label: 'Hosted MDXplora', href: '/hosted/' },
-      { label: 'Services', href: '/services/' },
+      { label: 'How it works', href: '/#how' },
+      { label: 'Compute', href: '/compute/' },
+      { label: 'Questions', href: '/#faq' },
+      { label: 'Early access', href: '/contact/?topic=early-access' },
     ],
   },
   {
-    title: 'Resources',
+    title: 'Services',
     links: [
-      { label: 'Documentation', href: '/docs/' },
-      { label: 'Python API', href: '/docs/api/' },
-      { label: 'Cite', href: '/cite/' },
-      { label: 'Source code', href: release.repository },
-      { label: 'Changelog', href: `${release.repository}/blob/${release.tag}/CHANGELOG.md` },
+      { label: 'Studies run for you', href: '/services/' },
+      { label: 'Training', href: '/contact/?topic=training' },
+      { label: 'Support', href: '/contact/?topic=support' },
     ],
   },
   {
@@ -46,5 +52,3 @@ export const footer = [
     ],
   },
 ] as const;
-
-export { release };

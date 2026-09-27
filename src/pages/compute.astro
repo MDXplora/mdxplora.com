@@ -16,31 +16,29 @@ const steps = [
   },
   {
     title: 'The connector does the work',
-    text: 'It picks the job up, runs FastMDXplora there, or submits it to SLURM, and sends progress back to your browser.',
+    text: 'It picks the job up, runs the study there or submits it to SLURM, and sends progress back to your browser.',
   },
 ];
 ---
 
 <Base
-  title="Hosted"
-  description="MDXplora in your browser: the FastMDXplora Agent and GUI with nothing to install, on our GPUs or your own."
+  title="Compute"
+  description="Run MDXplora studies on GPUs we provide, or on your own workstation or cluster, chosen per study."
 >
   <section class="page-hero">
     <div class="container">
-      <span class="pill">
-        <span class="dot"></span> In development · early access
-      </span>
-      <h1>MDXplora in your browser</h1>
+      <span class="eyebrow">Compute</span>
+      <h1>Our GPUs, or yours.</h1>
       <p class="lead">
-        The FastMDXplora Agent and GUI, hosted. Nothing to install, no GPU to own, and the choice of running on GPUs we
-        provide or on the machines you already have.
+        No GPU to own and nothing to install. When you do have machines, connect them and choose for each study where it
+        runs.
       </p>
       <div class="cta">
         <a class="button button-primary" href="/contact/?topic=early-access">
           Join early access
         </a>
-        <a class="button button-secondary" href="/docs/installation/">
-          Use FastMDXplora today
+        <a class="button button-secondary" href="/#how">
+          How a study runs
         </a>
       </div>
     </div>
@@ -53,15 +51,15 @@ const steps = [
         <p>Open a browser and sign in. No environment to build and no drivers to match to a CUDA version.</p>
       </article>
       <article class="card">
-        <h3>The same studies, unchanged</h3>
+        <h3>The same study anywhere</h3>
         <p>
-          MDXplora runs FastMDXplora. A Config written on your laptop runs there as it is, and a study run there comes
-          back as an ordinary FastMDXplora directory that runs on your laptop again.
+          A study is one Config. It runs the same on our GPUs and on yours, and it can be downloaded whole, with its
+          data and its record, whenever you want it.
         </p>
       </article>
       <article class="card">
-        <h3>Compute you choose</h3>
-        <p>Our GPUs when you have none, your own workstation or cluster when you do, chosen per study.</p>
+        <h3>Chosen per study</h3>
+        <p>Our GPUs when you have none, your own workstation or cluster when you do.</p>
       </article>
     </div>
   </section>
@@ -93,8 +91,8 @@ const steps = [
         <div>
           <h3>It only runs MD studies</h3>
           <p>
-            The connector runs validated FastMDXplora Configs and nothing else. It never executes code sent to it, which
-            is what makes it straightforward for an IT department to approve.
+            The connector runs validated Configs and nothing else. It never executes code sent to it, which is what
+            makes it straightforward for an IT department to approve.
           </p>
         </div>
       </div>
