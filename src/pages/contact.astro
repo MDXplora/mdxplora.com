@@ -5,6 +5,16 @@ import { site } from '../data/site';
 if (import.meta.env.PROD && !site.formspreeId) {
   throw new Error('PUBLIC_FORMSPREE_ID is not set, so the contact form would have nowhere to send. See README.');
 }
+// A Formspree form ID is a short run of letters and digits. Anything else, or
+// a leftover placeholder such as YOUR_FORM_ID, would publish a form that fails.
+if (
+  import.meta.env.PROD &&
+  (!/^[A-Za-z0-9]{4,32}$/.test(site.formspreeId ?? '') || /your|form|placeholder/i.test(site.formspreeId ?? ''))
+) {
+  throw new Error(
+    `PUBLIC_FORMSPREE_ID is "${site.formspreeId}", which is not a Formspree form ID. Set the ID from the form's page. See README.`,
+  );
+}
 
 const topics = [
   { value: 'early-access', label: 'Early access to MDXplora' },

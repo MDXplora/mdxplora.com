@@ -50,16 +50,16 @@ by hand.
 
 ## Configuration
 
-| Where                        | Name                  | What                                                          |
-| ---------------------------- | --------------------- | ------------------------------------------------------------- |
-| Repository variable          | `PUBLIC_FORMSPREE_ID` | The Formspree form ID. A build without it fails.              |
-| Repository secret            | `BANNED_TERMS`        | The banned-terms list, one term per line.                     |
-| Dependabot secret            | `BANNED_TERMS`        | The same list, so Dependabot's pull requests are checked too. |
-| Settings, Pages              | Source                | GitHub Actions                                                |
-| Settings, Pages              | Custom domain         | `mdxplora.com`, with Enforce HTTPS                            |
-| Organization settings, Pages | Verified domains      | `mdxplora.com`, so no other account can claim it              |
-| Formspree, form settings     | reCAPTCHA             | Off; the form submits in the page and has a honeypot          |
-| Formspree, form settings     | Restrict to domain    | `mdxplora.com`                                                |
+| Where                        | Name                  | What                                                                     |
+| ---------------------------- | --------------------- | ------------------------------------------------------------------------ |
+| Repository variable          | `PUBLIC_FORMSPREE_ID` | The Formspree form ID. A build without it, or with a placeholder, fails. |
+| Repository secret            | `BANNED_TERMS`        | The banned-terms list, one term per line.                                |
+| Dependabot secret            | `BANNED_TERMS`        | The same list, so Dependabot's pull requests are checked too.            |
+| Settings, Pages              | Source                | GitHub Actions                                                           |
+| Settings, Pages              | Custom domain         | `mdxplora.com`, with Enforce HTTPS                                       |
+| Organization settings, Pages | Verified domains      | `mdxplora.com`, so no other account can claim it                         |
+| Formspree, form settings     | reCAPTCHA             | Off; the form submits in the page and has a honeypot                     |
+| Formspree, form settings     | Restrict to domain    | `mdxplora.com`                                                           |
 
 DNS for GitHub Pages, with the records set to DNS only (not proxied) so GitHub can issue the certificate:
 
