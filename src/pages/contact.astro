@@ -24,7 +24,8 @@ const topics = [
   { value: 'support', label: 'Support', subject: 'Support request' },
   { value: 'other', label: 'Something else', subject: 'Message' },
 ];
-// Optional questions for early access, to help decide who to bring in first.
+// Optional questions for early access, to help decide who to bring in first. The field
+// names are the questions, so the email we receive reads plainly.
 const groups = ['An academic research group', 'A company', 'Teaching a course', 'Something else'];
 const compute = [
   'None yet',
@@ -86,7 +87,7 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
           <div class="row">
             <label>
               <span>Where you work</span>
-              <select name="group">
+              <select name="where you work">
                 <option value="">Choose one</option>
                 {groups.map((g) => (
                   <option>{g}</option>
@@ -95,7 +96,7 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
             </label>
             <label>
               <span>Compute you have now</span>
-              <select name="compute">
+              <select name="compute you have now">
                 <option value="">Choose one</option>
                 {compute.map((c) => (
                   <option>{c}</option>
@@ -105,7 +106,7 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
           </div>
           <label>
             <span>What you want to simulate</span>
-            <textarea name="systems" rows="3" aria-describedby="systems-hint"></textarea>
+            <textarea name="what you want to simulate" rows="3" aria-describedby="systems-hint"></textarea>
             <small id="systems-hint">The system, roughly how many atoms, and the question you want answered.</small>
           </label>
         </fieldset>

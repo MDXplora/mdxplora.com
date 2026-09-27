@@ -203,9 +203,9 @@ test('early-access questions show for that topic only, and are sent only with it
   await expect(page.locator('.status')).toContainText('Thank you');
   expect(sent[0]).toMatchObject({
     _subject: 'MDXplora website: Early access request from Ada Lovelace',
-    group: 'An academic research group',
-    compute: 'A workstation with a GPU',
-    systems: 'A small protein in water.',
+    'where you work': 'An academic research group',
+    'compute you have now': 'A workstation with a GPU',
+    'what you want to simulate': 'A small protein in water.',
   });
 
   // A different topic sends none of them.
@@ -213,8 +213,8 @@ test('early-access questions show for that topic only, and are sent only with it
   await fillContact(page);
   await page.getByRole('button', { name: 'Send' }).click();
   await expect.poll(() => sent.length).toBe(2);
-  expect(Object.keys(sent[1])).not.toContain('group');
-  expect(Object.keys(sent[1])).not.toContain('systems');
+  expect(Object.keys(sent[1])).not.toContain('where you work');
+  expect(Object.keys(sent[1])).not.toContain('what you want to simulate');
 });
 
 test('security reports have somewhere to go (RFC 9116)', async ({ request }) => {
