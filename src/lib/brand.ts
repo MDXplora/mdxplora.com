@@ -8,13 +8,18 @@ export const colours = {
   ink: '#070b16',
 } as const;
 
-/** Three atoms and two bonds, on a 32 x 32 grid. */
+/**
+ * A droplet: seven atoms in the close-packed arrangement a Lennard-Jones
+ * liquid forms, one at the centre and six around it, on a 32 x 32 grid. The
+ * same droplets form in the fluid behind the home page.
+ */
 export const mark = {
-  bonds: 'M9 21.5 16 11l7 8',
   atoms: [
-    { cx: 9, cy: 21.5, r: 3.1 },
-    { cx: 16, cy: 11, r: 3.6 },
-    { cx: 23, cy: 19, r: 2.7 },
+    { cx: 16, cy: 16, r: 3.2 },
+    ...Array.from({ length: 6 }, (_, k) => {
+      const angle = (k * Math.PI) / 3 + Math.PI / 6;
+      return { cx: +(16 + 7.4 * Math.cos(angle)).toFixed(2), cy: +(16 + 7.4 * Math.sin(angle)).toFixed(2), r: 3.2 };
+    }),
   ],
 } as const;
 
@@ -25,9 +30,7 @@ export const mark = {
  * and `scale` shrinks the atoms towards the centre, for icons whose edges may be cropped.
  */
 export function markElements({ id = 'mark', radius = 8, scale = 1 } = {}): string {
-  const inner = `<path d="${mark.bonds}" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>${mark.atoms
-    .map((a) => `<circle cx="${a.cx}" cy="${a.cy}" r="${a.r}" fill="#fff"/>`)
-    .join('')}`;
+  const inner = mark.atoms.map((a) => `<circle cx="${a.cx}" cy="${a.cy}" r="${a.r}" fill="#fff"/>`).join('');
   const shrink =
     scale === 1 ? inner : `<g transform="translate(16 16) scale(${scale}) translate(-16 -16)">${inner}</g>`;
   return (
