@@ -8,9 +8,14 @@
 export const CUTOFF = 2.5;
 /** Neighbours closer than this are drawn joined. */
 export const BOND = 1.25;
-/** Close to the 2D critical point, so clusters form and dissolve. */
+/**
+ * Just below the critical temperature of the 2D fluid truncated at 2.5 sigma
+ * (about 0.46), near its critical density, so droplets nucleate and grow.
+ */
 export const TEMPERATURE = 0.45;
 export const DENSITY = 0.35;
+/** A cluster of at least this many atoms is drawn as a droplet rather than vapour. */
+export const DROPLET = 10;
 
 const DT = 0.004;
 const MAX_FORCE = 80;
@@ -105,16 +110,38 @@ export class LJFluid {
     }
   }
 
-  /** Calls visit(i, j, r2) for every pair closer than BOND that does not cross the periodic edge. */
-  bonds(visit: (i: number, j: number, r2: number) => void) {
-    const { x, y } = this;
+  /**
+   * Calls visit(i, j, r2) for every pair closer than BOND that does not cross
+   * the periodic edge (the pairs worth drawing), and returns, for each atom,
+   * how many atoms are in its cluster: atoms joined by bonds, across the edge
+   * too. One pass over the pairs does both.
+   */
+  bonds(visit: (i: number, j: number, r2: number) => void = () => {}): Int32Array {
+    const { n, x, y } = this;
     const bond2 = BOND * BOND;
+    const parent = new Int32Array(n);
+    for (let i = 0; i < n; i++) parent[i] = i;
+    const root = (i: number) => {
+      while (parent[i] !== i) {
+        parent[i] = parent[parent[i]];
+        i = parent[i];
+      }
+      return i;
+    };
     this.bin();
     this.pairs((i, j, _dx, _dy, r2) => {
       if (r2 > bond2) return;
+      const a = root(i);
+      const b = root(j);
+      if (a !== b) parent[a] = b;
       if (Math.abs(x[i] - x[j]) > BOND || Math.abs(y[i] - y[j]) > BOND) return;
       visit(i, j, r2);
     });
+    const count = new Int32Array(n);
+    for (let i = 0; i < n; i++) count[root(i)]++;
+    const size = new Int32Array(n);
+    for (let i = 0; i < n; i++) size[i] = count[root(i)];
+    return size;
   }
 
   private removeDrift() {

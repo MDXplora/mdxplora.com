@@ -1,15 +1,23 @@
 ---
+import { DROPLET } from '../lib/lj-fluid';
+
 // A small Lennard-Jones fluid (src/lib/lj-fluid.ts), integrated live behind the
-// hero. Held near the critical temperature, it forms clusters that grow and
-// break up. It runs only while on screen, at no more than 60 frames a second,
-// and shows a still picture instead for reduced motion, Save-Data, or a device
-// that cannot keep up.
+// hero. Held just below the critical temperature, it forms droplets that grow
+// and break up; they are drawn in a second colour so nucleation and growth can
+// be seen, and the caption says what it is. It runs only while on screen, at no
+// more than 60 frames a second, and shows a still picture instead for reduced
+// motion, Save-Data, or a device that cannot keep up.
+
+const caption =
+  'A two-dimensional Lennard-Jones fluid, simulated in your browser just below its critical point. ' +
+  `Droplets of ${DROPLET} or more atoms are drawn in teal.`;
 ---
 
 <canvas class="particle-field" aria-hidden="true"></canvas>
+<p class="particle-caption">{caption}</p>
 
 <script>
-  import { BOND, CUTOFF, DENSITY, LJFluid } from '../lib/lj-fluid';
+  import { BOND, CUTOFF, DENSITY, DROPLET, LJFluid } from '../lib/lj-fluid';
 
   type Theme = { particle: string; bond: string };
 
@@ -68,7 +76,7 @@
       ctx!.clearRect(0, 0, fluid.lx * SIGMA_PX, fluid.ly * SIGMA_PX);
       ctx!.lineWidth = 1;
       const bond2 = BOND * BOND;
-      fluid.bonds((i, j, r2) => {
+      const sizes = fluid.bonds((i, j, r2) => {
         const a = Math.min(1, (bond2 - r2) / 0.5) * 0.3;
         ctx!.strokeStyle = `rgba(${theme.bond}, ${a})`;
         ctx!.beginPath();
@@ -76,13 +84,17 @@
         ctx!.lineTo(x[j] * SIGMA_PX, y[j] * SIGMA_PX);
         ctx!.stroke();
       });
-      ctx!.fillStyle = `rgba(${theme.particle}, 0.6)`;
-      ctx!.beginPath();
-      for (let i = 0; i < n; i++) {
-        ctx!.moveTo(x[i] * SIGMA_PX + 1.8, y[i] * SIGMA_PX);
-        ctx!.arc(x[i] * SIGMA_PX, y[i] * SIGMA_PX, 1.8, 0, Math.PI * 2);
+      // Vapour first, then droplets over it.
+      for (const droplet of [false, true]) {
+        ctx!.fillStyle = droplet ? `rgba(${theme.bond}, 0.85)` : `rgba(${theme.particle}, 0.6)`;
+        ctx!.beginPath();
+        for (let i = 0; i < n; i++) {
+          if (sizes[i] >= DROPLET !== droplet) continue;
+          ctx!.moveTo(x[i] * SIGMA_PX + 1.8, y[i] * SIGMA_PX);
+          ctx!.arc(x[i] * SIGMA_PX, y[i] * SIGMA_PX, 1.8, 0, Math.PI * 2);
+        }
+        ctx!.fill();
       }
-      ctx!.fill();
     }
 
     // Keeps each frame within budget: fewer steps per frame first, then a still picture.
@@ -189,5 +201,23 @@
   }
   .particle-field.ready {
     opacity: 0.9;
+  }
+  .particle-caption {
+    position: absolute;
+    /* Aligned with the page's content column, not the window's edge. */
+    right: max(var(--gutter), calc((100% - var(--page-max)) / 2 + var(--gutter)));
+    bottom: 0.9rem;
+    max-width: 30rem;
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    text-align: right;
+    color: var(--fg-subtle);
+  }
+  @media (max-width: 560px) {
+    .particle-caption {
+      left: var(--gutter);
+      text-align: left;
+    }
   }
 </style>

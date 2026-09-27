@@ -12,7 +12,7 @@ import satori from 'satori';
 import type { Card } from '../data/cards';
 import { site } from '../data/site';
 import { colours, markElements } from './brand';
-import { BOND, DENSITY, LJFluid, seeded } from './lj-fluid';
+import { BOND, DENSITY, DROPLET, LJFluid, seeded } from './lj-fluid';
 
 export const WIDTH = 1200;
 export const HEIGHT = 630;
@@ -52,12 +52,15 @@ function fluidBackground(): string {
   const px = (v: number) => (v * SIGMA_PX).toFixed(1);
   const bond2 = BOND * BOND;
   const bonds: string[] = [];
-  fluid.bonds((i, j, r2) => {
+  const sizes = fluid.bonds((i, j, r2) => {
     const a = (Math.min(1, (bond2 - r2) / 0.5) * 0.5).toFixed(2);
     bonds.push(`<line x1="${px(x[i])}" y1="${px(y[i])}" x2="${px(x[j])}" y2="${px(y[j])}" stroke-opacity="${a}"/>`);
   });
-  const atoms: string[] = [];
-  for (let i = 0; i < n; i++) atoms.push(`<circle cx="${px(x[i])}" cy="${px(y[i])}" r="2.1"/>`);
+  const vapour: string[] = [];
+  const droplets: string[] = [];
+  for (let i = 0; i < n; i++) {
+    (sizes[i] >= DROPLET ? droplets : vapour).push(`<circle cx="${px(x[i])}" cy="${px(y[i])}" r="2.1"/>`);
+  }
 
   background =
     `<defs>` +
@@ -73,7 +76,8 @@ function fluidBackground(): string {
     `<rect width="${WIDTH}" height="${HEIGHT}" fill="url(#glow-teal)"/>` +
     `<g mask="url(#fluid-mask)" opacity="0.9">` +
     `<g stroke="rgb(34,195,181)" stroke-width="1.2">${bonds.join('')}</g>` +
-    `<g fill="rgb(143,176,255)" fill-opacity="0.75">${atoms.join('')}</g>` +
+    `<g fill="rgb(143,176,255)" fill-opacity="0.75">${vapour.join('')}</g>` +
+    `<g fill="rgb(34,195,181)" fill-opacity="0.9">${droplets.join('')}</g>` +
     `</g>` +
     `<rect y="${HEIGHT - 6}" width="${WIDTH}" height="6" fill="url(#bar)"/>`;
   return background;

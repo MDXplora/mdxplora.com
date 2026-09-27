@@ -127,6 +127,12 @@ test.describe('the hero fluid', () => {
     await expect.poll(() => state(page)).toBe('running');
   });
 
+  test('says what it is', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('.particle-caption')).toContainText('Lennard-Jones fluid');
+    await expect(page.locator('.particle-caption')).toContainText('Droplets of 10 or more atoms');
+  });
+
   test('is a still picture when motion is reduced', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
