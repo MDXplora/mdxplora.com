@@ -6,7 +6,11 @@ import sitemap from '@astrojs/sitemap';
 // set response headers. Astro adds script-src and style-src, with a hash for
 // every script and style it bundles; Base.astro adds the hashes of the inline
 // scripts in src/lib/inline-scripts.ts. Nothing else, such as injected code,
-// can run. A <meta> policy cannot carry frame-ancestors or report-uri.
+// can run once the policy is read. A <meta> policy governs only what follows
+// it, and Astro puts it near the end of <head>: the theme script and the
+// structured data before it are the site's own, and the theme script's hash is
+// listed all the same. A <meta> policy cannot carry frame-ancestors or
+// report-uri.
 const policy = /** @type {const} */ ([
   "default-src 'self'",
   "base-uri 'self'",
