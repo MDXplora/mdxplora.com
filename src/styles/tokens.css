@@ -28,7 +28,10 @@
   --badge-gradient: linear-gradient(120deg, #0e7a71 0%, #2451d6 55%, #6a4bdc 100%);
 }
 
-/* Dark is the default; light follows. data-theme is set before first paint. */
+/* Dark is the default; light follows. data-theme is set before first paint,
+   from the visitor's choice or their system's; without JavaScript it is not
+   set, and the system's choice is followed by the copy of the light theme at
+   the end (the browser tests check the two stay the same). */
 :root,
 :root[data-theme='dark'] {
   color-scheme: dark;
@@ -80,4 +83,32 @@
   --bond: 20, 150, 140;
   --shadow: 0 1px 2px rgba(11, 17, 34, 0.04), 0 18px 40px -24px rgba(11, 17, 34, 0.25);
   --ink-gradient: var(--badge-gradient);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+    --bg: #fafbfe;
+    --bg-raised: #ffffff;
+    --bg-sunken: #f1f3f9;
+    --surface: #ffffff;
+    --surface-hover: #f5f7fc;
+    --border: #e2e6f0;
+    --border-strong: #cbd2e3;
+    --field-border: #7c86a3;
+    --danger: #c2372f;
+    --fg: #0b1122;
+    --fg-muted: #4b5573;
+    --fg-subtle: #5f6886;
+    --positive: #0e7a71;
+    --link: #2451d6;
+    --accent: #2451d6;
+    --accent-fg: #ffffff;
+    --code-bg: #0b1122;
+    --glow: rgba(36, 81, 214, 0.12);
+    --particle: 36, 81, 214;
+    --bond: 20, 150, 140;
+    --shadow: 0 1px 2px rgba(11, 17, 34, 0.04), 0 18px 40px -24px rgba(11, 17, 34, 0.25);
+    --ink-gradient: var(--badge-gradient);
+  }
 }

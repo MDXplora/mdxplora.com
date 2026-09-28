@@ -116,8 +116,7 @@ test('each page has its own link preview image, matching its headline', async ({
   }
 });
 
-test('a chosen theme is remembered on the next page', async ({ page, isMobile }) => {
-  test.skip(isMobile, 'the toggle sits in the header on wide screens');
+test('a chosen theme is remembered on the next page', async ({ page }) => {
   await page.goto('/');
   const before = await page.locator('html').getAttribute('data-theme');
   await page.locator('.theme-toggle').first().click();
@@ -142,10 +141,32 @@ test('the engine is named only where results must cite it, and nothing links to 
   }
 });
 
-test('an unknown address gets the not-found page', async ({ page }) => {
+test('an unknown address gets the not-found page, which claims no address of its own', async ({ page }) => {
   const response = await page.goto('/no-such-page/');
   expect(response?.status()).toBe(404);
   await expect(page.getByRole('link', { name: 'Back to the home page' })).toBeVisible();
+  await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
+  await expect(page.locator('meta[property="og:url"]')).toHaveCount(0);
+});
+
+test('the phone menu closes with Escape, back to its button, and when the window widens', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile, 'the menu is for narrow screens');
+  await page.goto('/');
+  const toggle = page.locator('.menu-toggle');
+  await toggle.click();
+  await expect(page.locator('#mobile-menu')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#mobile-menu')).toBeHidden();
+  await expect(toggle).toBeFocused();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await toggle.click();
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await expect(page.locator('#mobile-menu')).toBeHidden();
+  await page.setViewportSize({ width: 412, height: 800 });
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
 });
 
 test('a link from another page chooses the contact topic', async ({ page }) => {
@@ -205,6 +226,56 @@ test('a form sent incomplete says what is missing, marks it, and focus lands on 
 
 test.describe('without JavaScript', () => {
   test.use({ javaScriptEnabled: false });
+
+  test('every page can be reached from the header, and the buttons that need scripts are gone', async ({ page }) => {
+    await page.goto('/');
+    for (const label of ['How it works', 'Compute', 'Services', 'Contact']) {
+      await expect(page.locator('.site-header .links').getByRole('link', { name: label })).toBeVisible();
+    }
+    await expect(page.locator('.menu-toggle')).toBeHidden();
+    await expect(page.locator('.theme-toggle')).toBeHidden();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+
+  for (const scheme of ['light', 'dark'] as const) {
+    test(`the ${scheme} system colours are followed, as with JavaScript`, async ({ page, browser }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto('/');
+      const tokens = () =>
+        page.evaluate(() => {
+          const style = getComputedStyle(document.documentElement);
+          return Object.fromEntries(
+            [...document.styleSheets]
+              .flatMap((sheet) => [...sheet.cssRules])
+              .flatMap((rule) => (rule instanceof CSSStyleRule ? [...rule.style] : []))
+              .filter((name) => name.startsWith('--'))
+              .map((name) => [name, style.getPropertyValue(name).trim()]),
+          );
+        });
+      const without = await tokens();
+      const scripted = await browser.newContext({ colorScheme: scheme, javaScriptEnabled: true });
+      const other = await scripted.newPage();
+      await other.goto(page.url());
+      const withScripts = await other.evaluate(() => document.documentElement.dataset.theme);
+      expect(withScripts).toBe(scheme);
+      const expected = await other.evaluate(() => {
+        const style = getComputedStyle(document.documentElement);
+        return Object.fromEntries(
+          [...document.styleSheets]
+            .flatMap((sheet) => [...sheet.cssRules])
+            .flatMap((rule) => (rule instanceof CSSStyleRule ? [...rule.style] : []))
+            .filter((name) => name.startsWith('--'))
+            .map((name) => [name, style.getPropertyValue(name).trim()]),
+        );
+      });
+      await scripted.close();
+      expect(without['--bg']).toBe(scheme === 'light' ? '#fafbfe' : '#070b16');
+      expect(without).toEqual(expected);
+    });
+  }
 
   test('the browser checks the form before it is posted', async ({ page }) => {
     await page.goto('/contact/');
@@ -296,8 +367,7 @@ test('the browser icon is the current mark, at an address that changes with it',
   expect(svg.match(/<circle/g)?.length, 'the droplet has seven atoms').toBe(7);
 });
 
-test("the browser's own colour follows the theme", async ({ page, isMobile }) => {
-  test.skip(isMobile, 'the toggle sits in the header on wide screens');
+test("the browser's own colour follows the theme", async ({ page }) => {
   await page.goto('/');
   const colour = () => page.locator('meta[name="theme-color"]').getAttribute('content');
   const background = () =>

@@ -51,11 +51,19 @@ const here = Astro.url.pathname;
 <script>
   const toggle = document.querySelector<HTMLButtonElement>('.menu-toggle');
   const menu = document.getElementById('mobile-menu');
-  toggle?.addEventListener('click', () => {
-    const open = toggle.getAttribute('aria-expanded') === 'true';
-    toggle.setAttribute('aria-expanded', String(!open));
-    if (menu) menu.hidden = open;
+  const show = (open: boolean) => {
+    toggle?.setAttribute('aria-expanded', String(open));
+    if (menu) menu.hidden = !open;
+  };
+  const isOpen = () => toggle?.getAttribute('aria-expanded') === 'true';
+  toggle?.addEventListener('click', () => show(!isOpen()));
+  // Escape closes it, back to its button; so does a window grown past the phone layout.
+  addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !isOpen()) return;
+    show(false);
+    toggle?.focus();
   });
+  matchMedia('(min-width: 861px)').addEventListener('change', (wide) => wide.matches && show(false));
   const header = document.querySelector('.site-header');
   const onScroll = () => header?.classList.toggle('scrolled', window.scrollY > 8);
   onScroll();
@@ -180,6 +188,31 @@ const here = Astro.url.pathname;
     }
     .menu-toggle {
       display: inline-flex;
+    }
+  }
+  /* Without JavaScript the buttons cannot work: the links show instead, on a
+     line of their own where the bar is narrow. */
+  @media (scripting: none) {
+    .menu-toggle {
+      display: none;
+    }
+  }
+  @media (scripting: none) and (max-width: 860px) {
+    .bar {
+      height: auto;
+      min-height: 64px;
+      flex-wrap: wrap;
+      column-gap: 1rem;
+      row-gap: 0.5rem;
+      padding-block: 0.75rem;
+    }
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      order: 3;
+      width: 100%;
+      column-gap: 1.25rem;
+      row-gap: 0.25rem;
     }
   }
 </style>

@@ -256,7 +256,7 @@ const faq = [
           <li>A standard error the trajectory cannot support is withheld, not printed beside a caveat.</li>
         </ul>
       </div>
-      <div class="refusal" role="img" aria-label="An example of a study that was refused, with the reason">
+      <figure class="refusal" aria-label="An example of a study that was refused, with the reason">
         <div class="refusal-head">
           <span class="refusal-mark">!</span>
           <span>Setup stopped</span>
@@ -266,7 +266,7 @@ const faq = [
           The file is the chemistry, so the two cannot both stand.
         </p>
         <p class="refusal-fix">Supply the ligand in the protonation state the study means, then run again.</p>
-      </div>
+      </figure>
     </div>
   </section>
 
@@ -589,6 +589,7 @@ const faq = [
     box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--teal) 70%, transparent);
   }
   .refusal {
+    margin: 0;
     padding: 1.5rem;
     border: 1px solid color-mix(in srgb, #f2a23a 45%, var(--border));
     border-radius: var(--radius-l);

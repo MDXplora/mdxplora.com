@@ -14,9 +14,11 @@ import { counterScript, hashOf, themeScript } from '../lib/inline-scripts';
 interface Props {
   title?: string;
   description?: string;
+  /** False for a page with no address of its own, such as the not-found page. */
+  canonical?: boolean;
 }
 
-const { title, description = `${site.tagline}. ${site.support}` } = Astro.props;
+const { title, description = `${site.tagline}. ${site.support}`, canonical: addressed = true } = Astro.props;
 const fullTitle = title ? `${title} | ${site.name}` : `${site.name} | ${site.tagline}`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const card = cardFor(Astro.url.pathname);
@@ -43,7 +45,7 @@ if (analytics) {
 ---
 
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -51,7 +53,7 @@ if (analytics) {
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonical} />
+    {addressed && <link rel="canonical" href={canonical} />}
     <!-- Fetched with the page, so text does not reflow when it arrives. -->
     <link rel="preload" href={interLatin} as="font" type="font/woff2" crossorigin />
     <link rel="icon" href={`/favicon.ico?v=${iconVersion}`} sizes="32x32" />
@@ -64,7 +66,7 @@ if (analytics) {
     <meta property="og:site_name" content={site.name} />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonical} />
+    {addressed && <meta property="og:url" content={canonical} />}
     <meta property="og:image" content={image} />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
