@@ -141,6 +141,15 @@ test('the engine is named only where results must cite it, and nothing links to 
   }
 });
 
+test('the privacy page answers Do Not Track and says what Formspree receives', async ({ page }) => {
+  await page.goto('/privacy/');
+  const prose = page.locator('.prose');
+  await expect(prose).toContainText('Do Not Track');
+  await expect(prose).toContainText('Global Privacy Control');
+  await expect(prose).toContainText('your IP address and the name of your browser');
+  await expect(prose).toContainText('With JavaScript turned off');
+});
+
 test('an unknown address gets the not-found page, which claims no address of its own', async ({ page }) => {
   const response = await page.goto('/no-such-page/');
   expect(response?.status()).toBe(404);
