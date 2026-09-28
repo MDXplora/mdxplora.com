@@ -1,3 +1,15 @@
+// The hosted service's address, checked at build: https and a name, nothing else.
+function serviceAddress(raw: string | undefined): string | undefined {
+  const value = raw?.trim();
+  if (!value) return undefined;
+  if (!/^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)+\/?$/i.test(value) || /example|your|placeholder/i.test(value)) {
+    throw new Error(
+      `PUBLIC_APP_URL is "${value}", which is not the service's https address, such as https://app.mdxplora.com. See README.`,
+    );
+  }
+  return `${value.replace(/\/$/, '')}/`;
+}
+
 export const site = {
   name: 'MDXplora',
   tagline: 'From question to publishable molecular dynamics',
@@ -9,6 +21,9 @@ export const site = {
   formspreeId: import.meta.env.PUBLIC_FORMSPREE_ID as string | undefined,
   // Cloudflare Web Analytics site token. Unset, the site counts nothing and says so.
   analyticsToken: import.meta.env.PUBLIC_CF_ANALYTICS_TOKEN as string | undefined,
+  // The hosted service, where people with access sign in. Unset, the site shows no sign-in,
+  // so nothing points at a service that is not running.
+  appUrl: serviceAddress(import.meta.env.PUBLIC_APP_URL as string | undefined),
 } as const;
 
 // The software MDXplora computes with, named only where a user must cite it.

@@ -59,6 +59,16 @@ on the visitor's device. The privacy page describes it only when it is on, and t
 and endpoint only then. It loads on `mdxplora.com` alone, so local previews, the browser tests and Lighthouse are never
 counted. To turn it off, delete the variable and rerun the workflow.
 
+## Sign in
+
+With `PUBLIC_APP_URL` set to the hosted service's address (`https://app.mdxplora.com`), the header, the phone menu
+and the footer link to it as **Sign in**. Unset, the site shows no sign-in, so it never points at a service that is not
+running. The address must be https and a name only; a build with anything else fails.
+
+Set it once the service answers at that address (`/_mdx/health` returns `ok`), and once the service has its own privacy
+notice and terms: signing in gives the service an email address, which this site's privacy page does not cover. Then
+`gh variable set PUBLIC_APP_URL --repo MDXplora/mdxplora.com --body https://app.mdxplora.com` and rerun the workflow.
+
 ## Dependencies
 
 Dependabot proposes updates every Monday (`.github/dependabot.yml`): minor and patch updates together in one pull
@@ -72,6 +82,7 @@ by hand.
 | ---------------------------- | --------------------------- | ------------------------------------------------------------------------ |
 | Repository variable          | `PUBLIC_FORMSPREE_ID`       | The Formspree form ID. A build without it, or with a placeholder, fails. |
 | Repository variable          | `PUBLIC_CF_ANALYTICS_TOKEN` | Optional. Cloudflare Web Analytics token; unset, nothing is counted.     |
+| Repository variable          | `PUBLIC_APP_URL`            | Optional. The hosted service's address; unset, no sign-in is shown.      |
 | Repository secret            | `BANNED_TERMS`              | The banned-terms list, one term per line.                                |
 | Dependabot secret            | `BANNED_TERMS`              | The same list, so Dependabot's pull requests are checked too.            |
 | Settings, Pages              | Source                      | GitHub Actions                                                           |

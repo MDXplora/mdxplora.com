@@ -1,7 +1,7 @@
 ---
 import Logo from './Logo.astro';
 import ThemeToggle from './ThemeToggle.astro';
-import { nav } from '../data/site';
+import { nav, site } from '../data/site';
 
 const here = Astro.url.pathname;
 ---
@@ -22,6 +22,11 @@ const here = Astro.url.pathname;
 
     <div class="actions">
       <ThemeToggle />
+      {site.appUrl && (
+        <a class="signin" href={site.appUrl}>
+          Sign in
+        </a>
+      )}
       <a class="button button-primary button-small" href="/contact/?topic=early-access">
         Join early access
       </a>
@@ -38,6 +43,7 @@ const here = Astro.url.pathname;
         <a href={item.href}>{item.label}</a>
       ))}
       <a href="/contact/?topic=early-access">Join early access</a>
+      {site.appUrl && <a href={site.appUrl}>Sign in</a>}
     </nav>
   </div>
 </header>
@@ -101,6 +107,16 @@ const here = Astro.url.pathname;
     align-items: center;
     gap: 0.75rem;
   }
+  .signin {
+    color: var(--fg-muted);
+    text-decoration: none;
+    font-size: 0.925rem;
+    font-weight: 500;
+    transition: color 0.15s ease;
+  }
+  .signin:hover {
+    color: var(--fg);
+  }
   .menu-toggle {
     display: none;
     width: 40px;
@@ -146,6 +162,7 @@ const here = Astro.url.pathname;
   }
   @media (max-width: 860px) {
     .links,
+    .signin,
     .button-small {
       display: none;
     }

@@ -305,3 +305,27 @@ test.describe('the hero fluid', () => {
     await expect.poll(() => state(page)).toBe('still');
   });
 });
+
+test('sign-in appears only when the service address is set, and leads there', async ({ page, isMobile }) => {
+  await page.goto('/');
+  const everywhere = page.locator('a', { hasText: /^Sign in$/ });
+  const count = await everywhere.count();
+  if (count === 0) {
+    // Unset: nothing points at a service that is not running.
+    await expect(page.locator('a[href^="https://app."]')).toHaveCount(0);
+    return;
+  }
+  // Header, phone menu and footer, all to the same https address.
+  expect(count).toBe(3);
+  const targets = new Set(await everywhere.evaluateAll((links) => links.map((a) => (a as HTMLAnchorElement).href)));
+  expect(targets.size).toBe(1);
+  const [target] = [...targets];
+  expect(target).toMatch(/^https:\/\/[a-z0-9.-]+\/$/);
+  await expect(page.locator('footer a', { hasText: /^Sign in$/ })).toBeVisible();
+  if (isMobile) {
+    await page.locator('.menu-toggle').click();
+    await expect(page.locator('#mobile-menu a', { hasText: /^Sign in$/ })).toBeVisible();
+  } else {
+    await expect(page.locator('.site-header .actions a', { hasText: /^Sign in$/ })).toBeVisible();
+  }
+});

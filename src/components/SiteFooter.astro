@@ -3,6 +3,12 @@ import Logo from './Logo.astro';
 import { footer, site } from '../data/site';
 
 const year = new Date().getFullYear();
+// Sign in joins the product links once the service's address is set.
+const columns = footer.map((column) =>
+  column.title === 'Product' && site.appUrl
+    ? { ...column, links: [...column.links, { label: 'Sign in', href: site.appUrl }] }
+    : column,
+);
 ---
 
 <footer class="site-footer">
@@ -11,7 +17,7 @@ const year = new Date().getFullYear();
       <Logo id="logo-footer" />
       <p>{site.tagline}.</p>
     </div>
-    {footer.map((column) => (
+    {columns.map((column) => (
       <nav aria-label={column.title}>
         <h2>{column.title}</h2>
         <ul>
