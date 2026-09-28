@@ -10,9 +10,12 @@ on:
 permissions:
   contents: read
 
+# One run at a time for each branch or pull request. A newer push replaces a
+# check still running, but on main, where a run may be deploying to Pages, it
+# waits instead, so the site is never left half published.
 concurrency:
-  group: site-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: true
+  group: site-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   build:
@@ -21,11 +24,13 @@ jobs:
       PUBLIC_FORMSPREE_ID: ${{ vars.PUBLIC_FORMSPREE_ID }}
       PUBLIC_CF_ANALYTICS_TOKEN: ${{ vars.PUBLIC_CF_ANALYTICS_TOKEN }}
       PUBLIC_APP_URL: ${{ vars.PUBLIC_APP_URL }}
-      BANNED_TERMS: ${{ secrets.BANNED_TERMS }}
+      # Whether the list is there; the list itself goes only to the steps that read it.
+      HAS_BANNED_TERMS: ${{ secrets.BANNED_TERMS != '' }}
     steps:
-      - uses: actions/checkout@v7
+      # Actions are pinned to a commit, which cannot be moved; Dependabot keeps them current.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -36,13 +41,16 @@ jobs:
       # The banned-terms list is a secret, so pull requests from forks, which
       # cannot read it, are checked when they reach main instead.
       - name: Check the source for banned terms
-        if: env.BANNED_TERMS != ''
+        if: env.HAS_BANNED_TERMS == 'true'
         run: node scripts/check-terms.mjs
+        env:
+          BANNED_TERMS: ${{ secrets.BANNED_TERMS }}
 
       - run: npm run build
       - run: npm run check
         env:
-          CI: ${{ env.BANNED_TERMS != '' && 'true' || '' }}
+          CI: ${{ env.HAS_BANNED_TERMS == 'true' && 'true' || '' }}
+          BANNED_TERMS: ${{ secrets.BANNED_TERMS }}
 
       - run: npx playwright install --with-deps chromium
       # Includes the accessibility checks (WCAG 2.2 AA, every page, both themes).
@@ -50,23 +58,26 @@ jobs:
         env:
           CI: 'true'
 
-      # Speed, accessibility, best practice and SEO scores; thresholds in lighthouserc.json.
-      - name: Lighthouse
-        run: npm run lighthouse
-
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: lighthouse
-          path: .lighthouseci/reports
-          if-no-files-found: ignore
-
-      - uses: actions/upload-pages-artifact@v5
+      # Packed for Pages before Lighthouse runs, so nothing Lighthouse installs
+      # (through npx, outside the lockfile) can change what is published. A
+      # failing Lighthouse still stops the deploy.
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:
           path: dist
           # For /.well-known/security.txt; the build has no other hidden files.
           include-hidden-files: true
+
+      # Speed, accessibility, best practice and SEO scores; thresholds in lighthouserc.json.
+      - name: Lighthouse
+        run: npm run lighthouse
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: lighthouse
+          path: .lighthouseci/reports
+          if-no-files-found: ignore
 
   deploy:
     needs: build
@@ -80,4 +91,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

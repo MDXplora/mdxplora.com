@@ -88,8 +88,9 @@ Actions, Uptime, Enable workflow turns it back on.
 
 Dependabot proposes updates every Monday (`.github/dependabot.yml`): minor and patch updates together in one pull
 request each for npm and for GitHub Actions, major updates one at a time, each release at least a week old. Merge once
-CI passes. Lighthouse CI runs through `npx` at the version pinned in `package.json`, outside the lockfile, and is updated
-by hand.
+CI passes. The workflows pin each action to a commit, with its version beside it, and Dependabot moves both. Lighthouse
+CI runs through `npx` at the version pinned in `package.json`, outside the lockfile, and is updated by hand; it runs after
+the site is packed for Pages and without the banned-terms list, so it cannot change what is published or read the list.
 
 ## Configuration
 
