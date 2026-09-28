@@ -120,48 +120,48 @@ const faq = [
 <Base>
   <script is:inline type="application/ld+json" slot="head" set:html={JSON.stringify(structuredData)} />
   <section class="hero">
-    <ParticleField />
-    <div class="container hero-inner">
-      <div class="hero-copy">
-        <a class="pill" href="/contact/?topic=early-access">
-          <span class="dot"></span> Early access is open
-        </a>
-        <h1>
-          <span class="line">From question to</span>{' '}
-          <span class="gradient-text">
-            <span class="line">publishable</span> <span class="line">molecular dynamics</span>
-          </span>
-        </h1>
-        <p class="support">{site.support}</p>
-        <p class="lead">
-          MDXplora prepares the system, runs the dynamics, analyses the trajectory and writes up the study, in your
-          browser.
-        </p>
-        <div class="cta">
-          <a class="button button-primary" href="/contact/?topic=early-access">
-            Join early access
+    <ParticleField>
+      <div class="container hero-inner">
+        <div class="hero-copy">
+          <a class="pill" href="/contact/?topic=early-access">
+            <span class="dot"></span> Early access is open
           </a>
-          <a class="button button-secondary" href="#how">
-            How it works
-          </a>
+          <h1>
+            <span class="line">From question to</span>{' '}
+            <span class="gradient-text">
+              <span class="line">publishable</span> <span class="line">molecular dynamics</span>
+            </span>
+          </h1>
+          <p class="support">{site.support}</p>
+          <p class="lead">
+            MDXplora prepares the system, runs the dynamics, analyses the trajectory and writes up the study, in your
+            browser.
+          </p>
+          <div class="cta">
+            <a class="button button-primary" href="/contact/?topic=early-access">
+              Join early access
+            </a>
+            <a class="button button-secondary" href="#how">
+              How it works
+            </a>
+          </div>
         </div>
-      </div>
 
-      <figure class="preview" aria-label="A preview of a study being written in MDXplora">
-        <div class="preview-bar">
-          <span></span>
-          <span></span>
-          <span></span>
-          <span class="preview-title">New study</span>
-        </div>
-        <div class="preview-body">
-          <p class="bubble">Simulate trypsin with benzamidine bound at pH 6.5 for 100 ns</p>
-          <div class="proposal">
-            <div class="proposal-head">
-              <span>Config</span>
-              <span class="valid">Validated</span>
-            </div>
-            <pre class="code"><code><span class="key">systems</span>:
+        <figure class="preview" aria-label="A preview of a study being written in MDXplora">
+          <div class="preview-bar">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span class="preview-title">New study</span>
+          </div>
+          <div class="preview-body">
+            <p class="bubble">Simulate trypsin with benzamidine bound at pH 6.5 for 100 ns</p>
+            <div class="proposal">
+              <div class="proposal-head">
+                <span>Config</span>
+                <span class="valid">Validated</span>
+              </div>
+              <pre class="code"><code><span class="key">systems</span>:
   - <span class="key">system</span>: <span class="string">3PTB</span>
 <span class="key">setup</span>:
   <span class="key">ph</span>: <span class="string">6.5</span>
@@ -169,16 +169,17 @@ const faq = [
   <span class="key">ligand_name</span>: <span class="string">BEN</span>
 <span class="key">simulation</span>:
   <span class="key">duration_ns</span>: <span class="string">100</span></code></pre>
+            </div>
+            <div class="run-on">
+              <span class="run-label">Run on</span>
+              <span class="chip chip-on">MDXplora GPU</span>
+              <span class="chip">Your workstation</span>
+            </div>
           </div>
-          <div class="run-on">
-            <span class="run-label">Run on</span>
-            <span class="chip chip-on">MDXplora GPU</span>
-            <span class="chip">Your workstation</span>
-          </div>
-        </div>
-        <figcaption>A preview of MDXplora, which is in early access.</figcaption>
-      </figure>
-    </div>
+          <figcaption>A preview of MDXplora, which is in early access.</figcaption>
+        </figure>
+      </div>
+    </ParticleField>
   </section>
 
   <section class="section" id="how">

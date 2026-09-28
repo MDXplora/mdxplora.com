@@ -298,11 +298,63 @@ test.describe('the hero fluid', () => {
     await expect(page.locator('.particle-caption')).toContainText('Droplets of 10 or more atoms');
   });
 
-  test('is a still picture when motion is reduced', async ({ page }) => {
+  test('is a still picture when motion is reduced, with nothing to pause', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
     await expect(page.locator('canvas.particle-field')).toHaveClass(/ready/);
     await expect.poll(() => state(page)).toBe('still');
+    await expect(page.locator('.particle-toggle')).toBeHidden();
+  });
+
+  test('stops at once when motion is reduced while the page is open', async ({ page }) => {
+    await page.goto('/');
+    await expect.poll(() => state(page)).toBe('running');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect.poll(() => state(page)).toBe('still');
+    await expect(page.locator('.particle-toggle')).toBeHidden();
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await expect.poll(() => state(page)).toBe('running');
+  });
+
+  test('can be paused and played, and the choice is remembered (WCAG 2.2.2)', async ({ page }) => {
+    await page.goto('/');
+    await expect.poll(() => state(page)).toBe('running');
+    await page.getByRole('button', { name: 'Pause animation' }).click();
+    await expect.poll(() => state(page)).toBe('held');
+    await page.reload();
+    await expect(page.locator('canvas.particle-field')).toHaveClass(/ready/);
+    await expect.poll(() => state(page)).toBe('held');
+    await page.getByRole('button', { name: 'Play animation' }).click();
+    await expect.poll(() => state(page)).toBe('running');
+    await page.reload();
+    await expect.poll(() => state(page)).toBe('running');
+  });
+
+  test.describe(() => {
+    // The spacing is added as a style of the test's own, which the page's policy would refuse.
+    test.use({ bypassCSP: true });
+    test('its caption follows the headline in reading order and never overlaps the hero', async ({ page }) => {
+      await page.goto('/');
+      const after = await page.evaluate(() => {
+        const heading = document.querySelector('.hero h1')!;
+        const caption = document.querySelector('.particle-caption')!;
+        return Boolean(heading.compareDocumentPosition(caption) & Node.DOCUMENT_POSITION_FOLLOWING);
+      });
+      expect(after).toBe(true);
+      // With the text spacing WCAG 1.4.12 asks a page to bear.
+      await page.addStyleTag({
+        content:
+          '* { line-height: 1.5 !important; letter-spacing: 0.12em !important; word-spacing: 0.16em !important; }',
+      });
+      const overlap = await page.evaluate(() => {
+        const note = document.querySelector('.particle-note')!.getBoundingClientRect();
+        return [...document.querySelectorAll('.hero-inner > *')].some((el) => {
+          const box = el.getBoundingClientRect();
+          return box.bottom > note.top + 1 && box.top < note.bottom && box.right > note.left && box.left < note.right;
+        });
+      });
+      expect(overlap).toBe(false);
+    });
   });
 });
 

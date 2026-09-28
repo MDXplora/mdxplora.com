@@ -6,7 +6,12 @@ import { DROPLET } from '../lib/lj-fluid';
 // and break up; they are drawn in a second colour so nucleation and growth can
 // be seen, and the caption says what it is. It runs only while on screen, at no
 // more than 60 frames a second, and shows a still picture instead for reduced
-// motion, Save-Data, or a device that cannot keep up.
+// motion (also when that is turned on while the page is open), Save-Data, or a
+// device that cannot keep up. While it moves, a button beside the caption
+// pauses it, and the choice is remembered in this browser.
+//
+// What the hero holds goes in the slot, so the caption follows it in reading
+// order.
 
 const caption =
   'A two-dimensional Lennard-Jones fluid, simulated in your browser just below its critical point. ' +
@@ -14,7 +19,13 @@ const caption =
 ---
 
 <canvas class="particle-field" aria-hidden="true"></canvas>
-<p class="particle-caption">{caption}</p>
+<slot />
+<div class="container particle-note">
+  <p class="particle-caption">{caption}</p>
+  <button class="particle-toggle" type="button" hidden>
+    Pause animation
+  </button>
+</div>
 
 <script>
   import { BOND, CUTOFF, DENSITY, DROPLET, LJFluid } from '../lib/lj-fluid';
@@ -27,6 +38,21 @@ const caption =
   const FRAME_MS = 1000 / 60; // high refresh rate screens get 60 frames a second, not 120
   const BUDGET_MS = 6; // the most one frame's simulation and drawing may take
   const SLICE_MS = 5; // settling runs in slices this long, so it never blocks the page
+  const HELD = 'mdxplora-fluid'; // 'paused' while the visitor has paused it
+
+  const remembered = () => {
+    try {
+      return localStorage.getItem(HELD) === 'paused';
+    } catch {
+      return false;
+    }
+  };
+  const remember = (held: boolean) => {
+    try {
+      if (held) localStorage.setItem(HELD, 'paused');
+      else localStorage.removeItem(HELD);
+    } catch {}
+  };
 
   function colours(): Theme {
     const style = getComputedStyle(document.documentElement);
@@ -40,13 +66,17 @@ const caption =
   const idle = (work: () => void) =>
     'requestIdleCallback' in window ? requestIdleCallback(work, { timeout: 200 }) : setTimeout(work, 16);
 
-  function start(canvas: HTMLCanvasElement) {
+  function start(canvas: HTMLCanvasElement, toggle: HTMLButtonElement | null) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     // A still picture instead of an animation: for reduced motion, for Save-Data,
     // and for devices too slow to animate within the frame budget.
     const saveData = (navigator as { connection?: { saveData?: boolean } }).connection?.saveData === true;
-    let still = matchMedia('(prefers-reduced-motion: reduce)').matches || saveData;
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+    let slow = false;
+    const still = () => reduced.matches || saveData || slow;
+    // Paused by the visitor, with the button.
+    let held = remembered();
     let theme = colours();
     let fluid: LJFluid;
     let generation = 0;
@@ -103,7 +133,7 @@ const caption =
       if (++measured < 30 || cost <= BUDGET_MS) return;
       if (substeps > 1) substeps--;
       else {
-        still = true;
+        slow = true;
         pause();
       }
       measured = 0;
@@ -120,8 +150,16 @@ const caption =
       adapt(performance.now() - t0);
     }
 
+    // The button shows only while there is motion to stop, and says what it does.
+    function label() {
+      if (!toggle) return;
+      toggle.hidden = still();
+      toggle.textContent = held ? 'Play animation' : 'Pause animation';
+    }
+
     function play() {
-      if (running || still || !settled || !onScreen || document.hidden) return;
+      label();
+      if (running || still() || held || !settled || !onScreen || document.hidden) return;
       running = true;
       canvas.dataset.state = 'running';
       frame = requestAnimationFrame(tick);
@@ -130,8 +168,16 @@ const caption =
     function pause() {
       running = false;
       cancelAnimationFrame(frame);
-      canvas.dataset.state = still ? 'still' : 'paused';
+      canvas.dataset.state = still() ? 'still' : held ? 'held' : 'paused';
+      label();
     }
+
+    toggle?.addEventListener('click', () => {
+      held = !held;
+      remember(held);
+      held ? pause() : play();
+    });
+    reduced.addEventListener('change', () => (still() ? pause() : play()));
 
     // Melts the starting lattice a slice at a time, then shows the fluid.
     function settle() {
@@ -184,7 +230,9 @@ const caption =
     host.addEventListener('pointerleave', () => (fluid.probe = null));
   }
 
-  document.querySelectorAll<HTMLCanvasElement>('canvas.particle-field').forEach(start);
+  document
+    .querySelectorAll<HTMLCanvasElement>('canvas.particle-field')
+    .forEach((canvas) => start(canvas, canvas.parentElement?.querySelector('.particle-toggle') ?? null));
 </script>
 
 <style>
@@ -202,11 +250,19 @@ const caption =
   .particle-field.ready {
     opacity: 0.9;
   }
-  .particle-caption {
+  /* Beside the hero's foot, aligned with the page's content column; in the
+     flow below the hero's content where the columns stack, so larger text or
+     spacing never pushes it under what is above. */
+  .particle-note {
     position: absolute;
-    /* Aligned with the page's content column, not the window's edge. */
-    right: max(var(--gutter), calc((100% - var(--page-max)) / 2 + var(--gutter)));
+    inset-inline: 0;
     bottom: 0.9rem;
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-end;
+    gap: 0.75rem;
+  }
+  .particle-caption {
     max-width: 30rem;
     margin: 0;
     font-size: 0.75rem;
@@ -214,9 +270,31 @@ const caption =
     text-align: right;
     color: var(--fg-subtle);
   }
-  @media (max-width: 560px) {
+  .particle-toggle {
+    flex: none;
+    padding: 0.3rem 0.65rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--fg-muted);
+    font: inherit;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+  .particle-toggle:hover {
+    color: var(--fg);
+  }
+  .particle-toggle[hidden] {
+    display: none;
+  }
+  @media (max-width: 900px) {
+    .particle-note {
+      position: relative;
+      bottom: auto;
+      margin-top: 2.5rem;
+      justify-content: space-between;
+    }
     .particle-caption {
-      left: var(--gutter);
       text-align: left;
     }
   }
