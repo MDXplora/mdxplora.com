@@ -69,9 +69,21 @@ const here = Astro.url.pathname;
     z-index: 50;
     background: color-mix(in srgb, var(--bg) 72%, transparent);
     backdrop-filter: saturate(160%) blur(14px);
-    -webkit-backdrop-filter: saturate(160%) blur(14px);
     border-bottom: 1px solid transparent;
     transition: border-color 0.2s ease;
+  }
+  /* For Safari before 18. In a rule of its own: the build keeps only one of
+     two such lines in the same rule. */
+  @supports (-webkit-backdrop-filter: none) {
+    .site-header {
+      -webkit-backdrop-filter: saturate(160%) blur(14px);
+    }
+  }
+  /* A browser without color-mix() would otherwise draw no background at all. */
+  @supports not (background: color-mix(in srgb, red 50%, transparent)) {
+    .site-header {
+      background: var(--bg);
+    }
   }
   .site-header.scrolled {
     border-bottom-color: var(--border);

@@ -135,7 +135,7 @@ pre {
 }
 
 .gradient-text {
-  background: var(--brand-gradient);
+  background: var(--ink-gradient);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

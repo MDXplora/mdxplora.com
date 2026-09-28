@@ -3,7 +3,11 @@
  *
  * Both themes are defined here once, so a colour changed here changes
  * everywhere. Text colours keep at least 4.5:1 contrast against every
- * background they sit on (WCAG AA); the accessibility tests check it.
+ * background they sit on (WCAG AA); the accessibility tests check it. Text
+ * drawn in a gradient, which axe cannot measure, keeps it at every point of
+ * the gradient (--ink-gradient), and so does white text on one
+ * (--badge-gradient). A form field's edge keeps 3:1 against the card it sits
+ * on and its own fill (--field-border, WCAG 1.4.11).
  */
 
 :root {
@@ -21,6 +25,7 @@
   --blue: #4c7dff;
   --violet: #8b6cff;
   --brand-gradient: linear-gradient(120deg, var(--teal) 0%, var(--blue) 55%, var(--violet) 100%);
+  --badge-gradient: linear-gradient(120deg, #0e7a71 0%, #2451d6 55%, #6a4bdc 100%);
 }
 
 /* Dark is the default; light follows. data-theme is set before first paint. */
@@ -34,6 +39,7 @@
   --surface-hover: #16213d;
   --border: #1f2a47;
   --border-strong: #2d3b61;
+  --field-border: #5d6b94;
   --fg: #eef1f8;
   --fg-muted: #a5aec8;
   --fg-subtle: #838cab;
@@ -46,6 +52,7 @@
   --particle: 143, 176, 255;
   --bond: 34, 195, 181;
   --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 20px 50px -20px rgba(0, 0, 0, 0.6);
+  --ink-gradient: var(--brand-gradient);
 }
 
 :root[data-theme='light'] {
@@ -57,6 +64,7 @@
   --surface-hover: #f5f7fc;
   --border: #e2e6f0;
   --border-strong: #cbd2e3;
+  --field-border: #7c86a3;
   --fg: #0b1122;
   --fg-muted: #4b5573;
   --fg-subtle: #5f6886;
@@ -69,4 +77,5 @@
   --particle: 36, 81, 214;
   --bond: 20, 150, 140;
   --shadow: 0 1px 2px rgba(11, 17, 34, 0.04), 0 18px 40px -24px rgba(11, 17, 34, 0.25);
+  --ink-gradient: var(--badge-gradient);
 }
