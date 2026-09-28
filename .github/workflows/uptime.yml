@@ -26,31 +26,41 @@ jobs:
     steps:
       - name: Check the site and the service
         run: |
-          set -u
+          set -uo pipefail
           failed=0
 
           # $1: a name for the log, $2: an https address, $3: the body it must
           # give, or empty for any. Three tries, 20 s apart, so a restart is
-          # not an outage.
+          # not an outage; a wrong answer is tried again like no answer.
           check() {
-            local host tries=0 body=""
+            local host tries=0 body="" why="" pem=""
             host="${2#https://}"
             host="${host%%/*}"
             while [ "${tries}" -lt 3 ]; do
               tries=$((tries + 1))
-              if body="$(curl --fail --silent --show-error --proto '=https' --max-time 20 "$2")"; then
+              if ! body="$(curl --fail --silent --show-error --proto '=https' --max-time 20 "$2" 2>&1)"; then
+                why="no answer (${body})"
+              elif [ -n "$3" ] && [ "${body}" != "$3" ]; then
+                why="it answered something other than \"$3\""
+              else
+                why=""
                 break
               fi
-              body="(no answer)"
               [ "${tries}" -lt 3 ] && sleep 20
             done
-            if [ "${body}" = "(no answer)" ] || { [ -n "$3" ] && [ "${body}" != "$3" ]; }; then
-              echo "::error::$1 at $2 is not answering as it should."
+            if [ -n "${why}" ]; then
+              echo "::error::$1 at $2 is not answering as it should: ${why}."
               failed=1
               return
             fi
-            if ! echo | openssl s_client -connect "${host}:443" -servername "${host}" 2>/dev/null \
-                | openssl x509 -noout -checkend $((14 * 86400)) >/dev/null; then
+            pem="$(echo | timeout 20 openssl s_client -connect "${host}:443" -servername "${host}" 2>/dev/null \
+              | openssl x509 2>/dev/null)" || pem=""
+            if [ -z "${pem}" ]; then
+              echo "::error::$1: the certificate for ${host} could not be read."
+              failed=1
+              return
+            fi
+            if ! openssl x509 -noout -checkend $((14 * 86400)) <<<"${pem}" >/dev/null; then
               echo "::error::$1: the certificate for ${host} ends within 14 days."
               failed=1
               return
