@@ -184,6 +184,34 @@ test('a message arrives with a subject naming its topic and sender', async ({ pa
   expect(sent[0].topic).toBe('training');
 });
 
+test('a form sent incomplete says what is missing, marks it, and focus lands on the outcome', async ({ page }) => {
+  const sent = await captureForm(page);
+  await page.goto('/contact/');
+  await page.getByLabel('Name', { exact: true }).fill('Ada Lovelace');
+  await page.getByLabel('Email', { exact: true }).fill('not an address');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.locator('.status')).toContainText('Please fill in');
+  await expect(page.getByLabel('Email', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.getByLabel('Message', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.getByLabel('Name', { exact: true })).not.toHaveAttribute('aria-invalid');
+  expect(sent).toHaveLength(0);
+
+  await fillContact(page);
+  await expect(page.getByLabel('Email', { exact: true })).not.toHaveAttribute('aria-invalid');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.locator('.status')).toContainText('Thank you');
+  await expect(page.locator('.status')).toBeFocused();
+});
+
+test.describe('without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('the browser checks the form before it is posted', async ({ page }) => {
+    await page.goto('/contact/');
+    expect(await page.locator('form.form').evaluate((form: HTMLFormElement) => form.noValidate)).toBe(false);
+  });
+});
+
 test('early-access questions show for that topic only, and are sent only with it', async ({ page }) => {
   const sent = await captureForm(page);
   await page.goto('/contact/?topic=early-access');

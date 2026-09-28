@@ -49,7 +49,7 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
 
   <section class="section">
     <div class="container layout">
-      <form class="card form" method="POST" action={endpoint} data-endpoint={endpoint} novalidate>
+      <form class="card form" method="POST" action={endpoint} data-endpoint={endpoint}>
         <div class="row">
           <label>
             <span>Name</span>
@@ -122,7 +122,7 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
           <button class="button button-primary" type="submit" disabled={!endpoint}>
             Send
           </button>
-          <p class="status" role="status" aria-live="polite">
+          <p class="status" role="status" aria-live="polite" tabindex="-1">
             {!endpoint && 'The form is not connected in this build. Please email us instead.'}
           </p>
         </div>
@@ -163,11 +163,31 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
   select?.addEventListener('change', showEarly);
   showEarly();
 
+  // With JavaScript the form checks itself and says what is missing here;
+  // without it, the browser does, and the form is posted as it is.
+  if (form) form.noValidate = true;
+
+  // Emptied first, so the same words said twice are announced twice.
+  const say = (text: string) => {
+    if (!status) return;
+    status.textContent = '';
+    requestAnimationFrame(() => (status.textContent = text));
+  };
+
+  const fields = form ? Array.from(form.querySelectorAll<HTMLInputElement>('input, select, textarea')) : [];
+  for (const field of fields) {
+    field.addEventListener('input', () => field.validity.valid && field.removeAttribute('aria-invalid'));
+  }
+
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!form.dataset.endpoint || !status || !button) return;
     if (!form.checkValidity()) {
-      status.textContent = 'Please fill in your name, a valid email address and a message.';
+      for (const field of fields) {
+        if (field.willValidate && !field.validity.valid) field.setAttribute('aria-invalid', 'true');
+        else field.removeAttribute('aria-invalid');
+      }
+      say('Please fill in your name, a valid email address and a message.');
       form.reportValidity();
       return;
     }
@@ -179,7 +199,7 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
       .slice(0, 80);
     if (subject && chosen) subject.value = `${subject.dataset.prefix}: ${chosen} from ${name}`;
     button.disabled = true;
-    status.textContent = 'Sending…';
+    say('Sending…');
     try {
       const response = await fetch(form.dataset.endpoint, {
         method: 'POST',
@@ -189,11 +209,13 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
       if (!response.ok) throw new Error(String(response.status));
       form.reset();
       showEarly();
-      status.textContent = 'Thank you. Your message has arrived, and we will reply by email.';
+      say('Thank you. Your message has arrived, and we will reply by email.');
     } catch {
-      status.textContent = 'That did not go through. Please try again, or email us directly.';
+      say('That did not go through. Please try again, or email us directly.');
     } finally {
       button.disabled = false;
+      // Disabling the button took the focus from it; it goes to what happened.
+      status.focus();
     }
   });
 </script>
@@ -296,6 +318,12 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
   .status {
     color: var(--fg-muted);
     font-size: 0.925rem;
+  }
+  .status:focus {
+    outline: none;
+  }
+  [aria-invalid='true'] {
+    border-color: var(--danger);
   }
   .fine {
     font-size: 0.825rem;
