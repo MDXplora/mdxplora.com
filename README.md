@@ -69,6 +69,21 @@ Set it once the service answers at that address (`/_mdx/health` returns `ok`), a
 notice and terms: signing in gives the service an email address, which this site's privacy page does not cover. Then
 `gh variable set PUBLIC_APP_URL --repo MDXplora/mdxplora.com --body https://app.mdxplora.com` and rerun the workflow.
 
+## Uptime
+
+Every 15 minutes, `.github/workflows/uptime.yml` checks from outside that this site answers over https and, with
+`PUBLIC_APP_URL` set, that the service's `/_mdx/health` answers `ok`. The service says `ok` only while its database
+answers and its regular check has got through in the last five minutes. Each address is tried three times, 20 seconds
+apart, so a restart is not an outage, and each certificate must have more than 14 days left.
+
+A failed run is emailed to whoever last changed the workflow's schedule, as long as their GitHub notification settings
+(Settings, Notifications, Actions) send failed workflows by email. The run's log is public, like the repository: it
+says which address failed and curl's reason, such as an HTTP status, and nothing else. To check at once: Actions,
+Uptime, Run workflow.
+
+GitHub turns scheduled workflows off after 60 days without activity in a public repository, and emails before it does;
+Actions, Uptime, Enable workflow turns it back on.
+
 ## Dependencies
 
 Dependabot proposes updates every Monday (`.github/dependabot.yml`): minor and patch updates together in one pull
