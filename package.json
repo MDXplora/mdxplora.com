@@ -31,5 +31,10 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "overrides": {
+    "satori": {
+      "fflate": "^0.8.3"
+    }
   }
 }
