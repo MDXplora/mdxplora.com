@@ -3,7 +3,7 @@ name: Uptime
 # Every 15 minutes, from outside: this site answers over https, and so does
 # the hosted service's health check (once PUBLIC_APP_URL is set), each with a
 # certificate that has more than 14 days left. A failed run emails whoever
-# last changed the schedule below; nothing else is posted. See README, Uptime.
+# last changed the schedule below; nothing else is posted. See DEVELOPMENT.md, Uptime.
 
 on:
   schedule:
