@@ -93,6 +93,10 @@ CI passes. The workflows pin each action to a commit, with its version beside it
 CI runs through `npx` at the version pinned in `package.json`, outside the lockfile, and is updated by hand; it runs after
 the site is packed for Pages and without the banned-terms list, so it cannot change what is published or read the list.
 
+The workflows run on `ubuntu-24.04` by name rather than `ubuntu-latest`, which GitHub moves to a new Ubuntu from
+time to time; Playwright's browsers need their system libraries there. Move it on by hand once Playwright supports the
+newer one.
+
 ## Configuration
 
 | Where                        | Name                        | What                                                                     |

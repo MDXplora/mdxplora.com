@@ -19,7 +19,10 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Named, not ubuntu-latest, which moves to Ubuntu 26.04 on 2026-10-19:
+    # Playwright's browsers and their system libraries are known on 24.04.
+    # Moved on by hand once the tools support the new one.
+    runs-on: ubuntu-24.04
     env:
       PUBLIC_FORMSPREE_ID: ${{ vars.PUBLIC_FORMSPREE_ID }}
       PUBLIC_CF_ANALYTICS_TOKEN: ${{ vars.PUBLIC_CF_ANALYTICS_TOKEN }}
@@ -82,7 +85,7 @@ jobs:
   deploy:
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       pages: write
       id-token: write
