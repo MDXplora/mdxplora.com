@@ -1,0 +1,125 @@
+---
+import Base from '../layouts/Base.astro';
+
+const terms = [
+  {
+    title: 'Who it is for first',
+    text: 'Groups that need molecular dynamics and have no one to run it, or no GPU to run it on: structural biology, biochemistry, drug discovery and teaching. We bring groups in as places open.',
+  },
+  {
+    title: 'What you get',
+    text: 'A private workspace in your browser with the Agent, the study builder, your studies, their reports and your files. Studies that need a GPU run on compute we provide as it opens, within an allowance set out when you join.',
+  },
+  {
+    title: 'What it costs',
+    text: 'Nothing: early access is free. Anything else would come with new terms, which you are asked to agree to before you go on. The Agent uses a language model with your own key, which its provider charges you for; building and running studies without it costs nothing.',
+  },
+  {
+    title: 'What you agree to',
+    text: 'The terms of use and the privacy notice of the service, shown before you start and again whenever they change. Your studies and results stay yours: download them whole at any time, and close your account when you like.',
+  },
+];
+
+const steps = [
+  { title: 'Ask', text: 'Tell us about your systems and your compute through the contact form.' },
+  { title: 'Hear back', text: 'We reply by email, and say when a place opens for your group.' },
+  {
+    title: 'Sign in',
+    text: 'Once you are let in, you sign in with your address, by a link we send each time; there is no password.',
+  },
+  {
+    title: 'Start',
+    text: 'Agree to the terms, open your workspace, and tell us what works and what does not.',
+  },
+];
+---
+
+<Base
+  title="Early access"
+  description="How early access to MDXplora works: who it is for first, what you get, what it costs and what you agree to."
+>
+  <section class="page-hero">
+    <div class="container">
+      <span class="eyebrow">Early access</span>
+      <h1>How early access works.</h1>
+      <p class="lead">MDXplora is opening to a small number of research groups first. This is what joining means.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container grid-2">
+      <h2 class="visually-hidden">The terms of early access</h2>
+      {terms.map((t) => (
+        <article class="card">
+          <h3>{t.title}</h3>
+          <p>{t.text}</p>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Joining</span>
+        <h2>From a message to your first study.</h2>
+      </div>
+      <ol class="steps">
+        {steps.map((s, i) => (
+          <li>
+            <span>{String(i + 1).padStart(2, '0')}</span>
+            <h3>{s.title}</h3>
+            <p>{s.text}</p>
+          </li>
+        ))}
+      </ol>
+      <p class="cta">
+        <a class="button button-primary" href="/contact/?topic=early-access">
+          Ask for early access
+        </a>
+      </p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+  }
+  .steps li {
+    padding-top: 1.25rem;
+    border-top: 2px solid var(--border-strong);
+  }
+  .steps span {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--fg-subtle);
+  }
+  .steps h3 {
+    margin-top: 0.75rem;
+    font-size: 1.15rem;
+    letter-spacing: -0.015em;
+  }
+  .steps p {
+    margin-top: 0.5rem;
+    color: var(--fg-muted);
+  }
+  .cta {
+    margin-top: 3rem;
+  }
+  @media (max-width: 900px) {
+    .steps {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  @media (max-width: 560px) {
+    .steps {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

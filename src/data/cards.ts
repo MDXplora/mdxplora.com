@@ -25,6 +25,12 @@ export const cards = [
     text: 'Studies run for you, training for your group, and support.',
   },
   {
+    slug: 'early-access',
+    eyebrow: 'Early access',
+    title: 'How early access works.',
+    text: 'Who it is for first, what you get, what it costs and what you agree to.',
+  },
+  {
     slug: 'contact',
     eyebrow: 'Contact',
     title: 'Talk to us.',

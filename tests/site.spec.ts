@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
 
-const pages = ['/', '/compute/', '/services/', '/contact/', '/privacy/'];
+const pages = ['/', '/compute/', '/services/', '/early-access/', '/contact/', '/privacy/'];
 
 for (const path of pages) {
   test(`${path} loads cleanly and fits the screen`, async ({ page }) => {
@@ -127,7 +127,7 @@ test('a chosen theme is remembered on the next page', async ({ page }) => {
 });
 
 test('the engine is named only where results must cite it, and nothing links to its repository', async ({ page }) => {
-  for (const path of ['/', '/compute/', '/services/', '/contact/', '/privacy/', '/no-such-page/']) {
+  for (const path of ['/', '/compute/', '/services/', '/early-access/', '/contact/', '/privacy/', '/no-such-page/']) {
     await page.goto(path);
     const elsewhere = await page.evaluate(() => {
       const copy = document.body.cloneNode(true) as HTMLElement;

@@ -48,7 +48,7 @@ export const footer = [
       { label: 'How it works', href: '/#how' },
       { label: 'Compute', href: '/compute/' },
       { label: 'Questions', href: '/#faq' },
-      { label: 'Early access', href: '/contact/?topic=early-access' },
+      { label: 'Early access', href: '/early-access/' },
     ],
   },
   {

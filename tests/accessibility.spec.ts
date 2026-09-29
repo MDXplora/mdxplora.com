@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
 // Every page, in both themes, against WCAG 2.2 level AA as far as a machine can check it.
-const pages = ['/', '/compute/', '/services/', '/contact/', '/privacy/', '/no-such-page/'];
+const pages = ['/', '/compute/', '/services/', '/early-access/', '/contact/', '/privacy/', '/no-such-page/'];
 
 for (const theme of ['dark', 'light']) {
   for (const path of pages) {
