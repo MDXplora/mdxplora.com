@@ -1,7 +1,7 @@
 // Every internal link in the built site must lead to a page that exists, and a link to a part of a page (#name) to an
 // element with that id. Links written as full addresses on this site (https://mdxplora.com/..., such as a page's
 // canonical address and its preview image) count as internal. Read from href, src and content attributes, from each
-// candidate in srcset and imagesrcset, and from the addresses in structured data (JSON-LD), other than its @id names.
+// candidate in srcset and imagesrcset, and from the address values in structured data (JSON-LD), such as url and logo.
 //
 // External links are not fetched.
 //
@@ -35,12 +35,35 @@ function onSite(link) {
   return undefined;
 }
 
-// Every string in structured data, other than the @id names of its nodes, which are not links.
-function* strings(value, key) {
+// The values in structured data that are addresses: those of the properties schema.org gives a URL, and any ending in
+// "Url". Names, descriptions and @id names of nodes are not links.
+const ADDRESS_KEYS = new Set(['url', 'logo', 'image', 'sameAs', 'mainEntityOfPage', 'license', 'codeRepository']);
+function* addresses(value, key) {
   if (typeof value === 'string') {
-    if (key !== '@id') yield value;
+    if (key && (ADDRESS_KEYS.has(key) || key.endsWith('Url'))) yield value;
   } else if (value && typeof value === 'object') {
-    for (const [k, v] of Object.entries(value)) yield* strings(v, Array.isArray(value) ? key : k);
+    for (const [k, v] of Object.entries(value)) yield* addresses(v, Array.isArray(value) ? key : k);
+  }
+}
+
+// The address of each candidate in a srcset, read as the HTML standard does: an address runs to the next space, so a
+// data: address keeps its comma, and a comma ends a candidate only after its descriptors.
+function* srcsetAddresses(value) {
+  let i = 0;
+  while (i < value.length) {
+    while (i < value.length && /[\s,]/.test(value[i])) i++;
+    const start = i;
+    while (i < value.length && !/\s/.test(value[i])) i++;
+    let address = value.slice(start, i);
+    if (address.endsWith(',')) address = address.replace(/,+$/, '');
+    else {
+      let depth = 0;
+      for (; i < value.length && !(value[i] === ',' && depth === 0); i++) {
+        if (value[i] === '(') depth++;
+        else if (value[i] === ')') depth = Math.max(0, depth - 1);
+      }
+    }
+    if (address) yield address;
   }
 }
 
@@ -62,16 +85,11 @@ for (const page of pages(DIST)) {
   const found = [
     ...[...html.matchAll(/\s(?:href|src)="(\/[^"]*|#[^"]*)"/g)].map((m) => m[1]),
     ...[...html.matchAll(/\s(?:href|src|content)="(https:\/\/mdxplora\.com(?:[/?#][^"]*)?)"/g)].map((m) => m[1]),
-    ...[...html.matchAll(/\s(?:srcset|imagesrcset)="([^"]*)"/g)].flatMap((m) =>
-      m[1]
-        .split(',')
-        .map((candidate) => candidate.trim().split(/\s+/)[0])
-        .filter(Boolean),
-    ),
+    ...[...html.matchAll(/\s(?:srcset|imagesrcset)="([^"]*)"/g)].flatMap((m) => [...srcsetAddresses(m[1])]),
   ];
   for (const [, json] of html.matchAll(/<script[^>]*\stype="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)) {
     try {
-      found.push(...strings(JSON.parse(json)));
+      found.push(...addresses(JSON.parse(json)));
     } catch {
       broken.push(`${relative(DIST, page)} → structured data that is not valid JSON`);
     }
