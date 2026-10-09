@@ -209,6 +209,47 @@ test('srcset: only ASCII whitespace ends an address, as the HTML standard reads 
   expect(run.reported).toEqual([`/missing${nbsp}2x.png`]);
 });
 
+test('structured data: an address given as a node reference {"@id": ...} is read', () => {
+  const run = checkLinks({
+    'index.html': html(
+      '<h1 id="top">Home</h1>',
+      jsonLd({
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: { '@id': 'https://mdxplora.com/' } },
+              {
+                '@type': 'ListItem',
+                position: 2,
+                name: 'Gone',
+                item: { '@id': 'https://mdxplora.com/missing-crumb/' },
+              },
+            ],
+          },
+          {
+            '@type': 'WebSite',
+            '@id': 'https://mdxplora.com/#website',
+            url: '/',
+            potentialAction: { '@type': 'ViewAction', target: { '@id': '/missing-target/' } },
+          },
+          {
+            '@type': 'WebPage',
+            '@id': 'https://mdxplora.com/about/#webpage',
+            url: '/about/',
+            mainEntityOfPage: { '@id': '/about/#team' },
+            isPartOf: { '@id': 'https://mdxplora.com/#website' },
+            image: { '@type': 'ImageObject', '@id': 'https://mdxplora.com/#logo', url: '/ok.png' },
+          },
+        ],
+      }),
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(['/missing-target/', 'https://mdxplora.com/missing-crumb/'].sort());
+});
+
 test('a link to /page#name without the trailing slash is checked against that page', () => {
   const run = checkLinks({
     'index.html': html('<h1 id="top">Home</h1><a href="/about#team">Team</a><a href="/about#nowhere">Nowhere</a>'),

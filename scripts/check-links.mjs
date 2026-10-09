@@ -36,8 +36,9 @@ function onSite(link) {
 }
 
 // The values in structured data that are addresses: those of the properties schema.org gives a URL, and any ending in
-// "Url". An address may also sit inside the property's value, such as the urlTemplate of a potentialAction's target.
-// Names, descriptions and @id names of nodes are not links.
+// "Url". An address may also sit inside the property's value, such as the urlTemplate of a potentialAction's target,
+// or be the whole value as a node reference, such as "item": {"@id": "https://mdxplora.com/x/"}. Names, descriptions and
+// the @id names of nodes elsewhere are not links.
 const ADDRESS_KEYS = new Set([
   'url',
   'logo',
@@ -59,10 +60,15 @@ const ADDRESS_KEYS = new Set([
   'citation',
 ]);
 function* addresses(value, key) {
+  const isAddress = key && (ADDRESS_KEYS.has(key) || key.endsWith('Url'));
   if (typeof value === 'string') {
-    if (key && (ADDRESS_KEYS.has(key) || key.endsWith('Url'))) yield value;
+    if (isAddress) yield value;
+  } else if (Array.isArray(value)) {
+    for (const v of value) yield* addresses(v, key);
   } else if (value && typeof value === 'object') {
-    for (const [k, v] of Object.entries(value)) yield* addresses(v, Array.isArray(value) ? key : k);
+    const keys = Object.keys(value);
+    if (isAddress && keys.length === 1 && keys[0] === '@id' && typeof value['@id'] === 'string') yield value['@id'];
+    else for (const [k, v] of Object.entries(value)) yield* addresses(v, k);
   }
 }
 
