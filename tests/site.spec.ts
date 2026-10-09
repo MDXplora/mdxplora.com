@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
 const pages = ['/', '/compute/', '/services/', '/early-access/', '/contact/', '/privacy/'];
@@ -180,6 +181,23 @@ test('the privacy page answers Do Not Track and says what Formspree receives', a
   await expect(prose).toContainText('Global Privacy Control');
   await expect(prose).toContainText('your IP address and the name of your browser');
   await expect(prose).toContainText('With JavaScript turned off');
+});
+
+test('the privacy page names everything the site keeps in the browser', async ({ page }) => {
+  // Each key the site stores, and the words the privacy page uses for it. A new key fails here until it is described.
+  const described: Record<string, string> = {
+    'mdxplora-theme': 'light and dark',
+    'mdxplora-fluid': 'pause the animation',
+  };
+  const stored = new Set<string>();
+  for (const file of readdirSync('src', { recursive: true, encoding: 'utf8' })) {
+    if (!/\.(astro|ts)$/.test(file)) continue;
+    const text = readFileSync(join('src', file), 'utf8');
+    if (text.includes('localStorage.setItem')) for (const m of text.matchAll(/'(mdxplora-[a-z-]+)'/g)) stored.add(m[1]);
+  }
+  expect([...stored].sort()).toEqual(Object.keys(described).sort());
+  await page.goto('/privacy/');
+  for (const words of Object.values(described)) await expect(page.locator('.prose')).toContainText(words);
 });
 
 test('an unknown address gets the not-found page, which claims no address of its own', async ({ page }) => {
