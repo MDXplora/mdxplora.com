@@ -2,8 +2,9 @@
 
 **From question to publishable molecular dynamics.**
 
-MDXplora prepares the system, runs the dynamics, analyses the trajectory and writes up the study, in your browser.
-Every study is reproducible, traceable and checked before it runs.
+MDXplora is being built and opens to early-access groups in stages. It will prepare the system, run the dynamics,
+analyse the trajectory and write up the study, in your browser. Every study will be reproducible and traceable, and
+its Config validated before it runs.
 
 [mdxplora.com](https://mdxplora.com) | [Ask for early access](https://mdxplora.com/contact/?topic=early-access) |
 [info@mdxplora.com](mailto:info@mdxplora.com)
@@ -26,7 +27,8 @@ run again, by someone who was not there.
 
 ## Three ways to start
 
-- **Describe it.** Say what you want in a sentence. The Agent writes the study, and it is checked before anything runs.
+- **Describe it.** Say what you want in a sentence. The Agent writes the study's Config, and MDXplora validates it
+  before anything runs.
 - **Build it.** A form with every setting visible and explained, checked as you go.
 - **Bring it.** Upload a Config you already have. It runs as written.
 
@@ -54,7 +56,7 @@ Manifest.
 
 ## Early access
 
-MDXplora is in early access, opening to a small number of groups first. Tell us about your systems and your compute
+Early access opens in stages, to a small number of groups first. Tell us about your systems and your compute
 through the [contact form](https://mdxplora.com/contact/?topic=early-access). We also run studies for groups, train labs
 and support those that depend on molecular dynamics: see [Services](https://mdxplora.com/services/).
 

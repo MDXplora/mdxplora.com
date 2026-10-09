@@ -126,14 +126,20 @@ test('a page that describes the service says it is planned', async ({ page }) =>
   const status = 'MDXplora is being built and opens to early-access groups in stages.';
   for (const path of pages) {
     await page.goto(path);
-    const text = (await page.locator('main').innerText()).replace(/\s+/g, ' ');
+    // All of the text, the answers in closed questions too, which innerText leaves out.
+    const text = await page.locator('main').evaluate((main) => {
+      const copy = main.cloneNode(true) as HTMLElement;
+      copy.querySelectorAll('script, style').forEach((el) => el.remove());
+      copy.querySelectorAll('p, li, summary, figcaption, h1, h2, h3').forEach((el) => el.append(' '));
+      return (copy.textContent ?? '').replace(/\s+/g, ' ');
+    });
     const description = (await page.locator('meta[name="description"]').getAttribute('content')) ?? '';
     if (describesCompute.test(text)) {
       expect(text, path).toContain(status);
     }
     for (const said of [text, description]) {
       expect(said, path).not.toMatch(availableToday);
-      expect(said, path).not.toMatch(/early access is open\b|in one command/i);
+      expect(said, path).not.toMatch(/early access is open\b|\bis in early access\b|in one command/i);
     }
   }
 });
@@ -147,6 +153,22 @@ test('a link preview image says what is planned', () => {
     if (describesCompute.test(text)) expect(text).toMatch(/\bwill\b|planned/);
     expect(text).not.toMatch(availableToday);
   }
+});
+
+test('the README says what is planned', () => {
+  const readme = readFileSync('README.md', 'utf8');
+  const opening = readme.split('\n\n')[2];
+  expect(opening).toContain('MDXplora is being built and opens to early-access groups in stages.');
+  expect(readme).not.toMatch(/\bis in early access\b/i);
+});
+
+test('a Config written by the Agent is validated, in those words', async ({ page }) => {
+  await page.goto('/');
+  const describe = page.locator('.card', { has: page.getByRole('heading', { name: 'Describe it' }) });
+  await expect(describe).toContainText('validates it');
+  await expect(describe).not.toContainText(/\bchecks?\b/);
+  const readme = readFileSync('README.md', 'utf8');
+  expect(readme).toMatch(/\*\*Describe it\.\*\*[^\n]*\n?[^\n]*validates it/);
 });
 
 test('a chosen theme is remembered on the next page', async ({ page }) => {

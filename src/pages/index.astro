@@ -89,7 +89,7 @@ const studies = [
 const ways = [
   {
     title: 'Describe it',
-    text: 'Say what you want in a sentence. The Agent writes the study, and the same validator that checks every study checks it before anything runs.',
+    text: 'Say what you want in a sentence. The Agent writes the study’s Config, and MDXplora validates it, as it does every Config, before anything runs.',
   },
   {
     title: 'Build it',
@@ -104,7 +104,7 @@ const ways = [
 const faq = [
   {
     q: 'Can I use MDXplora today?',
-    a: 'MDXplora is in early access. Ask for a place through the contact form and we will be in touch as places open, starting with a small number of groups.',
+    a: 'MDXplora is being built and opens to early-access groups in stages, starting with a small number of groups. Ask for a place through the contact form and we will be in touch as places open.',
   },
   {
     q: 'Do I need a GPU?',
@@ -112,7 +112,7 @@ const faq = [
   },
   {
     q: 'Where does my data go?',
-    a: 'Studies run on our GPUs will be stored for your account. Once your own machines can be connected, studies run there will be able to keep their trajectories on your own storage, with only the records and reports shown in MDXplora.',
+    a: 'Studies will run on our GPUs and will be stored for your account. Once your own machines can be connected, studies run there will be able to keep their trajectories on your own storage, with only the records and reports shown in MDXplora.',
   },
 ];
 ---
@@ -177,7 +177,7 @@ const faq = [
               <span class="chip">Your workstation</span>
             </div>
           </div>
-          <figcaption>A preview of MDXplora as planned. It is in early access.</figcaption>
+          <figcaption>A preview of MDXplora as planned.</figcaption>
         </figure>
       </div>
     </ParticleField>
@@ -334,7 +334,7 @@ const faq = [
         <details id="cite">
           <summary>How do I cite results?</summary>
           <p>
-            Results produced on MDXplora are computed with {engine.name}. Cite the paper it asks to be cited (
+            Results produced on MDXplora will be computed with {engine.name}. Cite the paper it asks to be cited (
             <a href={`https://doi.org/${engine.paperDoi}`}>{engine.paperDoi}</a>) and the release named in your study’s
             Manifest (<a href={`https://doi.org/${engine.archiveDoi}`}>{engine.archiveDoi}</a>).
           </p>
