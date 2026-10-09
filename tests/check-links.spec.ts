@@ -250,6 +250,31 @@ test('structured data: an address given as a node reference {"@id": ...} is read
   expect(run.reported).toEqual(['/missing-target/', 'https://mdxplora.com/missing-crumb/'].sort());
 });
 
+test('structured data: a urlTemplate is checked up to its first placeholder, unless that is in the path', () => {
+  const entry = (urlTemplate: string) => ({ '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate } });
+  const run = checkLinks({
+    'index.html': html(
+      '<h1 id="top">Home</h1>',
+      jsonLd({
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        url: '/',
+        potentialAction: [
+          entry('https://mdxplora.com/about/?q={q}'),
+          entry('https://mdxplora.com/about/{?q}'),
+          entry('/about/#{section}'),
+          entry('https://mdxplora.com/docs/{slug}'),
+          entry('/docs/{slug}/index.html'),
+          entry('https://mdxplora.com/missing-search/?q={q}'),
+          entry('/missing-expanded{?q}'),
+        ],
+      }),
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(['/missing-expanded{?q}', 'https://mdxplora.com/missing-search/?q={q}'].sort());
+});
+
 test('a link to /page#name without the trailing slash is checked against that page', () => {
   const run = checkLinks({
     'index.html': html('<h1 id="top">Home</h1><a href="/about#team">Team</a><a href="/about#nowhere">Nowhere</a>'),

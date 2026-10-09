@@ -59,17 +59,34 @@ const ADDRESS_KEYS = new Set([
   'archivedAt',
   'citation',
 ]);
+// Each address as [written, checked]: these differ only for a urlTemplate with a placeholder.
 function* addresses(value, key) {
   const isAddress = key && (ADDRESS_KEYS.has(key) || key.endsWith('Url'));
   if (typeof value === 'string') {
-    if (isAddress) yield value;
+    if (key === 'urlTemplate') {
+      const base = templateBase(value);
+      if (base !== undefined) yield [value, base];
+    } else if (isAddress) yield [value, value];
   } else if (Array.isArray(value)) {
     for (const v of value) yield* addresses(v, key);
   } else if (value && typeof value === 'object') {
     const keys = Object.keys(value);
-    if (isAddress && keys.length === 1 && keys[0] === '@id' && typeof value['@id'] === 'string') yield value['@id'];
-    else for (const [k, v] of Object.entries(value)) yield* addresses(v, k);
+    if (isAddress && keys.length === 1 && keys[0] === '@id' && typeof value['@id'] === 'string') {
+      yield [value['@id'], value['@id']];
+    } else for (const [k, v] of Object.entries(value)) yield* addresses(v, k);
   }
+}
+
+// The part of a URL template (RFC 6570) that is known before it is filled in: the address up to the first placeholder,
+// without a partial query value or fragment, when that placeholder is in the query or fragment (?q={q}, {?q}, #{name}).
+// Nothing when a placeholder is in the path (/docs/{slug}), since the page is then not known.
+function templateBase(template) {
+  const cut = template.indexOf('{');
+  if (cut === -1) return template;
+  const before = template.slice(0, cut);
+  const end = before.search(/[?#]/);
+  if (end !== -1) return before.slice(0, end);
+  return /^\{[?#]/.test(template.slice(cut)) ? before : undefined;
 }
 
 // The address of each candidate in a srcset, read as the HTML standard does: an address runs to the next space, so a
@@ -109,12 +126,12 @@ const broken = [];
 let checked = 0;
 for (const page of pages(DIST)) {
   const html = readFileSync(page, 'utf8');
-  // Each link as written.
+  // Each link as written, and the part of it that is checked.
   const found = [
     ...[...html.matchAll(/\s(?:href|src)="(\/[^"]*|#[^"]*)"/g)].map((m) => m[1]),
     ...[...html.matchAll(/\s(?:href|src|content)="(https:\/\/mdxplora\.com(?:[/?#][^"]*)?)"/g)].map((m) => m[1]),
     ...[...html.matchAll(/\s(?:srcset|imagesrcset)="([^"]*)"/g)].flatMap((m) => [...srcsetAddresses(m[1])]),
-  ];
+  ].map((link) => [link, link]);
   for (const [, json] of html.matchAll(/<script[^>]*\stype="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)) {
     try {
       found.push(...addresses(JSON.parse(json)));
@@ -123,7 +140,7 @@ for (const page of pages(DIST)) {
     }
   }
   // Each link as written, and the address on this site it leads to.
-  const links = found.map((link) => [link, onSite(link)]).filter(([, href]) => href);
+  const links = found.map(([written, link]) => [written, onSite(link)]).filter(([, href]) => href);
   for (const [written, href] of links) {
     checked++;
     const [beforeHash, fragment] = href.split('#');
