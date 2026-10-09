@@ -10,6 +10,15 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   scroll-behavior: smooth;
+  /* Room for the sticky header, so a focused element or a linked heading is never scrolled under it. */
+  scroll-padding-top: 5rem;
+}
+
+/* Without JavaScript the phone header shows its links, on two rows at the narrowest widths. */
+@media (scripting: none) and (max-width: 860px) {
+  html {
+    scroll-padding-top: 9rem;
+  }
 }
 
 body {

@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 // Every page, in both themes, against WCAG 2.2 level AA as far as a machine can check it.
 const pages = ['/', '/compute/', '/services/', '/early-access/', '/contact/', '/privacy/', '/no-such-page/'];
@@ -82,4 +82,43 @@ test('the header blurs what scrolls under it, with the prefix older Safari reads
   const css = (await Promise.all(sheets.map(async (href) => (await request.get(href)).text()))).join('\n');
   expect(css).toMatch(/[^-]backdrop-filter:\s*saturate/);
   expect(css).toContain('-webkit-backdrop-filter:saturate');
+});
+
+// WCAG 2.2 SC 2.4.11, which axe does not check: going back up a page with Shift+Tab, no focused element ends up
+// under the sticky header.
+const focusPages = ['/', '/compute/', '/services/', '/early-access/', '/contact/', '/privacy/'];
+
+async function hiddenUnderHeader(page: Page, path: string): Promise<string[]> {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(path);
+  await page.locator('footer a').last().focus();
+  const hidden: string[] = [];
+  for (let i = 0; i < 80; i++) {
+    await page.keyboard.press('Shift+Tab');
+    const where = await page.evaluate(() => {
+      const el = document.activeElement as HTMLElement | null;
+      const header = document.querySelector('.site-header');
+      if (!el || !header || header.contains(el) || el === document.body || el.matches('.skip-link')) return null;
+      const box = el.getBoundingClientRect();
+      return { top: box.top, under: header.getBoundingClientRect().bottom, name: el.outerHTML.slice(0, 80) };
+    });
+    if (where && where.top < where.under - 1) hidden.push(`${where.name} (top ${Math.round(where.top)})`);
+  }
+  return hidden;
+}
+
+for (const path of focusPages) {
+  test(`${path}: focus is never hidden under the sticky header`, async ({ page }) => {
+    expect(await hiddenUnderHeader(page, path)).toEqual([]);
+  });
+}
+
+// Without JavaScript the phone header shows its links, on as many rows as they need, so it is taller.
+test.describe('without JavaScript, at the narrowest width', () => {
+  test.use({ javaScriptEnabled: false, viewport: { width: 320, height: 640 } });
+  for (const path of focusPages) {
+    test(`${path}: focus is never hidden under the taller header`, async ({ page }) => {
+      expect(await hiddenUnderHeader(page, path)).toEqual([]);
+    });
+  }
 });
