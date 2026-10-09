@@ -176,13 +176,17 @@ test('the answer to "Can I use MDXplora today?" says it plainly', async ({ page 
   expect(answer.match(/\bgroups\b/g), 'says "groups" once').toHaveLength(1);
 });
 
-test('a Config written by the Agent is validated, in those words', async ({ page }) => {
+test('a Config written by the Agent or built in the form is validated, in those words', async ({ page }) => {
   await page.goto('/');
   const describe = page.locator('.card', { has: page.getByRole('heading', { name: 'Describe it' }) });
   await expect(describe).toContainText('validates it');
   await expect(describe).not.toContainText(/\bchecks?\b/);
+  const build = page.locator('.card', { has: page.getByRole('heading', { name: 'Build it' }) });
+  await expect(build).toContainText('validates each one as you go');
+  await expect(build).not.toContainText(/\bcheck(?:s|ed)?\b/);
   const readme = readFileSync('README.md', 'utf8');
   expect(readme).toMatch(/\*\*Describe it\.\*\*[^\n]*\n?[^\n]*validates? it/);
+  expect(readme).toMatch(/\*\*Build it\.\*\*[^\n]*\n?[^\n]*validate each one as you go/);
 });
 
 test('DEVELOPMENT.md names every check script', () => {
