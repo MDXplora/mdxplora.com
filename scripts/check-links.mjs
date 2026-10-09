@@ -1,6 +1,7 @@
 // Every internal link in the built site must lead to a page that exists, and a link to a part of a page (#name) to an
 // element with that id. Links written as full addresses on this site (https://mdxplora.com/..., such as a page's
-// canonical address and its preview image) count as internal.
+// canonical address and its preview image) count as internal. Read from href, src and content attributes, from each
+// candidate in srcset and imagesrcset, and from the addresses in structured data (JSON-LD), other than its @id names.
 //
 // External links are not fetched.
 //
@@ -20,9 +21,27 @@ function* pages(dir) {
   }
 }
 
+// The file an address is served from. An address without its trailing slash (/page) serves /page/index.html.
 function target(path) {
-  if (path.endsWith('/')) return join(DIST, path, 'index.html');
-  return join(DIST, path);
+  const file = join(DIST, path);
+  if (path.endsWith('/') || (existsSync(file) && statSync(file).isDirectory())) return join(file, 'index.html');
+  return file;
+}
+
+// The address on this site a link leads to, or nothing for a link elsewhere.
+function onSite(link) {
+  if (link.startsWith('#') || (link.startsWith('/') && !link.startsWith('//'))) return link;
+  if (link === SITE || /^https:\/\/mdxplora\.com[/?#]/.test(link)) return link.slice(SITE.length) || '/';
+  return undefined;
+}
+
+// Every string in structured data, other than the @id names of its nodes, which are not links.
+function* strings(value, key) {
+  if (typeof value === 'string') {
+    if (key !== '@id') yield value;
+  } else if (value && typeof value === 'object') {
+    for (const [k, v] of Object.entries(value)) yield* strings(v, Array.isArray(value) ? key : k);
+  }
 }
 
 // The ids on each page, read once.
@@ -39,16 +58,27 @@ const broken = [];
 let checked = 0;
 for (const page of pages(DIST)) {
   const html = readFileSync(page, 'utf8');
-  // Each link as written, and the address on this site it leads to.
-  const links = [
-    ...[...html.matchAll(/\s(?:href|src)="(\/[^"]*|#[^"]*)"/g)].map((m) => [m[1], m[1]]),
-    ...[...html.matchAll(/\s(?:href|src|content)="(https:\/\/mdxplora\.com(?:\/[^"]*)?)"/g)].map((m) => [
-      m[1],
-      m[1].slice(SITE.length) || '/',
-    ]),
+  // Each link as written.
+  const found = [
+    ...[...html.matchAll(/\s(?:href|src)="(\/[^"]*|#[^"]*)"/g)].map((m) => m[1]),
+    ...[...html.matchAll(/\s(?:href|src|content)="(https:\/\/mdxplora\.com(?:[/?#][^"]*)?)"/g)].map((m) => m[1]),
+    ...[...html.matchAll(/\s(?:srcset|imagesrcset)="([^"]*)"/g)].flatMap((m) =>
+      m[1]
+        .split(',')
+        .map((candidate) => candidate.trim().split(/\s+/)[0])
+        .filter(Boolean),
+    ),
   ];
+  for (const [, json] of html.matchAll(/<script[^>]*\stype="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)) {
+    try {
+      found.push(...strings(JSON.parse(json)));
+    } catch {
+      broken.push(`${relative(DIST, page)} → structured data that is not valid JSON`);
+    }
+  }
+  // Each link as written, and the address on this site it leads to.
+  const links = found.map((link) => [link, onSite(link)]).filter(([, href]) => href);
   for (const [written, href] of links) {
-    if (href.startsWith('//')) continue;
     checked++;
     const [beforeHash, fragment] = href.split('#');
     let path, id;
