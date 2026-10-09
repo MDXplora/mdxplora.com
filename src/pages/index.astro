@@ -30,7 +30,7 @@ const phases = [
   {
     name: 'Config',
     kind: 'the study',
-    text: 'One file: the system, how it is prepared, how it is simulated, what is measured and how it is reported.',
+    text: 'One file: the system, how it is prepared, how it is simulated, what is analysed and how it is reported.',
   },
   {
     name: 'setup',
@@ -45,7 +45,7 @@ const phases = [
   {
     name: 'analysis',
     kind: 'phase',
-    text: 'Each analysis measures its own copy of the trajectory and records the settings it actually used.',
+    text: 'Each analysis works on its own copy of the trajectory and records the settings it actually used.',
   },
   {
     name: 'report',
@@ -66,7 +66,7 @@ const studies = [
   },
   {
     title: 'A protein with a ligand',
-    text: 'The ligand is found, its chemistry resolved and its protonation settled in the binding site. Interactions against published criteria show what holds it, not only what it touches.',
+    text: 'The ligand is found, its chemistry resolved and its protonation determined in the binding site. Interactions against published criteria show what holds it, not only what it touches.',
   },
   {
     title: 'A membrane protein',
@@ -108,11 +108,11 @@ const faq = [
   },
   {
     q: 'Do I need a GPU?',
-    a: 'No. Run on GPUs we provide, or connect your own workstation or cluster and choose for each study where it runs.',
+    a: 'No. Studies will run on GPUs we provide. Connecting your own workstation or cluster, and choosing for each study where it runs, is planned.',
   },
   {
     q: 'Where does my data go?',
-    a: 'Studies run on our GPUs are stored for your account. Studies run on your own machines can keep their trajectories on your own storage, with only the records and reports shown in MDXplora.',
+    a: 'Studies run on our GPUs will be stored for your account. Once your own machines can be connected, studies run there will be able to keep their trajectories on your own storage, with only the records and reports shown in MDXplora.',
   },
 ];
 ---
@@ -124,7 +124,7 @@ const faq = [
       <div class="container hero-inner">
         <div class="hero-copy">
           <a class="pill" href="/contact/?topic=early-access">
-            <span class="dot"></span> Early access is open
+            <span class="dot"></span> Ask for early access
           </a>
           <h1>
             <span class="line">From question to</span>{' '}
@@ -137,6 +137,7 @@ const faq = [
             MDXplora prepares the system, runs the dynamics, analyses the trajectory and writes up the study, in your
             browser.
           </p>
+          <p class="planned">{site.status}</p>
           <div class="cta">
             <a class="button button-primary" href="/contact/?topic=early-access">
               Join early access
@@ -176,7 +177,7 @@ const faq = [
               <span class="chip">Your workstation</span>
             </div>
           </div>
-          <figcaption>A preview of MDXplora, which is in early access.</figcaption>
+          <figcaption>A preview of MDXplora as planned. It is in early access.</figcaption>
         </figure>
       </div>
     </ParticleField>
@@ -276,11 +277,11 @@ const faq = [
         <span class="eyebrow">Compute</span>
         <h2>Our GPUs, or yours.</h2>
         <p>
-          Run on GPUs we provide, or connect your own workstation or cluster in one command. Your machine asks MDXplora
-          for work, so nothing reaches into your network.
+          Studies will run on GPUs we provide. Connecting your own workstation or cluster is planned: your machine will
+          ask MDXplora for work, so nothing reaches into your network.
         </p>
         <a class="text-link" href="/compute/">
-          How your own compute connects →
+          How your own compute will connect →
         </a>
       </div>
       <div class="card owned">
@@ -333,7 +334,7 @@ const faq = [
         <details id="cite">
           <summary>How do I cite results?</summary>
           <p>
-            Results produced on MDXplora are computed with {engine.name}. Cite its paper (
+            Results produced on MDXplora are computed with {engine.name}. Cite the paper it asks to be cited (
             <a href={`https://doi.org/${engine.paperDoi}`}>{engine.paperDoi}</a>) and the release named in your study’s
             Manifest (<a href={`https://doi.org/${engine.archiveDoi}`}>{engine.archiveDoi}</a>).
           </p>

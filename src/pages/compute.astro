@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import { site } from '../data/site';
 
 const steps = [
   {
@@ -23,16 +24,17 @@ const steps = [
 
 <Base
   title="Compute"
-  description="Run MDXplora studies on GPUs we provide, or on your own workstation or cluster, chosen per study."
+  description="MDXplora studies will run on GPUs we provide; running them on your own workstation or cluster, chosen per study, is planned."
 >
   <section class="page-hero">
     <div class="container">
       <span class="eyebrow">Compute</span>
       <h1>Our GPUs, or yours.</h1>
       <p class="lead">
-        No GPU to own and nothing to install. When you do have machines, connect them and choose for each study where it
-        runs.
+        No GPU to own and nothing to install. Connecting the machines you do have, and choosing for each study where it
+        runs, is planned.
       </p>
+      <p class="planned">{site.status}</p>
       <div class="cta">
         <a class="button button-primary" href="/contact/?topic=early-access">
           Join early access
@@ -49,18 +51,20 @@ const steps = [
       <h2 class="visually-hidden">Why run studies on MDXplora</h2>
       <article class="card">
         <h3>Nothing to install</h3>
-        <p>Open a browser and sign in. No environment to build and no drivers to match to a CUDA version.</p>
+        <p>A browser will be enough: no environment to build and no drivers to match to a CUDA version.</p>
       </article>
       <article class="card">
         <h3>The same study anywhere</h3>
         <p>
-          A study is one Config. It runs with the same settings on our GPUs and on yours, and it can be downloaded
+          A study is one Config. It will run with the same settings on our GPUs and on yours, and it can be downloaded
           whole, with its data and its record, whenever you want it.
         </p>
       </article>
       <article class="card">
         <h3>Chosen per study</h3>
-        <p>Our GPUs when you have none, your own workstation or cluster when you do.</p>
+        <p>
+          Our GPUs when you have none, and your own workstation or cluster when you do, once the connector is ready.
+        </p>
       </article>
     </div>
   </section>
@@ -68,11 +72,11 @@ const steps = [
   <section class="section">
     <div class="container">
       <div class="section-head">
-        <span class="eyebrow">Your own compute</span>
+        <span class="eyebrow">Your own compute, planned</span>
         <h2>Our interface, your machines.</h2>
         <p>
-          The connector is designed so that your machine asks MDXplora for work, the way a mail app checks for new mail.
-          Nothing reaches into your network, so there are no ports to open.
+          The connector is not available yet. It is designed so that your machine asks MDXplora for work, the way a mail
+          app checks for new mail. Nothing reaches into your network, so there are no ports to open. As designed:
         </p>
       </div>
       <ol class="steps">
@@ -87,7 +91,10 @@ const steps = [
       <div class="notes grid-2">
         <div>
           <h3>Your data can stay where it is</h3>
-          <p>Trajectories can remain on your own storage, with only the study records and reports shown in MDXplora.</p>
+          <p>
+            Trajectories will be able to remain on your own storage, with only the study records and reports shown in
+            MDXplora.
+          </p>
         </div>
         <div>
           <h3>It only runs MD studies</h3>

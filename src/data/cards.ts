@@ -7,7 +7,7 @@ import { site } from './site';
 export const cards = [
   {
     slug: 'home',
-    eyebrow: 'Early access is open',
+    eyebrow: 'Early access',
     title: site.tagline,
     accent: 'publishable molecular dynamics',
     text: site.support,
@@ -16,7 +16,7 @@ export const cards = [
     slug: 'compute',
     eyebrow: 'Compute',
     title: 'Our GPUs, or yours.',
-    text: 'Run each study on GPUs we provide, or on your own workstation or cluster.',
+    text: 'Studies will run on GPUs we provide, and on your own workstation or cluster once the connector is ready.',
   },
   {
     slug: 'services',

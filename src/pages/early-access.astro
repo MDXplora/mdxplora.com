@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import { site } from '../data/site';
 
 const terms = [
   {
@@ -8,11 +9,11 @@ const terms = [
   },
   {
     title: 'What you get',
-    text: 'A private workspace in your browser with the Agent, the study builder, your studies, their reports and your files. Studies that need a GPU run on compute we provide as it opens, within an allowance set out when you join.',
+    text: 'A private workspace in your browser with the Agent, the study builder, your studies, their reports and your files. Studies that need a GPU will run on compute we provide as it opens, within an allowance set out when you join.',
   },
   {
     title: 'What it costs',
-    text: 'Nothing: early access is free. Anything else would come with new terms, which you are asked to agree to before you go on. The Agent uses a language model with your own key, which its provider charges you for; building and running studies without it costs nothing.',
+    text: 'Nothing: early access is free. Anything else would come with new terms, which you are asked to agree to before you go on. The Agent uses an AI model with your own key, charged to you by its provider; building and running studies without it costs nothing.',
   },
   {
     title: 'What you agree to',
@@ -43,6 +44,7 @@ const steps = [
       <span class="eyebrow">Early access</span>
       <h1>How early access works.</h1>
       <p class="lead">MDXplora is opening to a small number of research groups first. This is what joining means.</p>
+      <p class="planned">{site.status}</p>
     </div>
   </section>
 

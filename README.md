@@ -11,13 +11,13 @@ Every study is reproducible, traceable and checked before it runs.
 ## How a study runs
 
 One file, the **Config**, describes the whole study: the system, how it is prepared, how it is simulated, what is
-measured and how it is reported. Four phases run from it:
+analysed and how it is reported. Four phases run from it:
 
 - **Setup** fetches or reads the structure, repairs what is missing, decides what each non-standard residue is for,
   then solvates and adds ions.
 - **Simulation** runs minimisation, equilibration and production, with restraints, membranes and biased sampling when
   the study asks for them.
-- **Analysis** measures the trajectory and records the settings it actually used.
+- **Analysis** works on its own copy of the trajectory and records the settings it actually used.
 - **Report** writes a methods paragraph from the recorded values, and a convergence section that says what the
   trajectory can support.
 
@@ -33,7 +33,7 @@ run again, by someone who was not there.
 ## What you can study
 
 - A protein on its own: fold, flexibility, secondary structure, contacts and clustering, from a PDB code.
-- A protein with a ligand: the ligand's chemistry and protonation settled in the binding site, and the interactions
+- A protein with a ligand: the ligand's chemistry and protonation determined in the binding site, and the interactions
   that hold it.
 - A membrane protein, embedded in a lipid bilayer with its orientation checked.
 - Free energy along a coordinate: umbrella sampling, metadynamics and steered MD.
@@ -48,8 +48,8 @@ not printed beside a caveat.
 
 ## Compute and data
 
-No GPU is needed: studies run on GPUs we provide. Connecting your own workstation or cluster, and choosing for each
-study where it runs, is on the way. Every study can be downloaded whole: the Config, the data, the report and the
+No GPU is needed: studies will run on GPUs we provide. Connecting your own workstation or cluster, and choosing for
+each study where it runs, is planned. Every study can be downloaded whole: the Config, the data, the report and the
 Manifest.
 
 ## Early access

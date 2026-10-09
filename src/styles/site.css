@@ -330,3 +330,13 @@ pre {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* What is planned and what runs today, said where the service is described. */
+p.planned {
+  margin-top: 1rem;
+  max-width: 40rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--teal);
+  font-size: 0.95rem;
+  color: var(--fg-muted);
+}

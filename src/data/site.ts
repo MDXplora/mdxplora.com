@@ -14,6 +14,8 @@ export const site = {
   name: 'MDXplora',
   tagline: 'From question to publishable molecular dynamics',
   support: 'Every study is reproducible, traceable and checked before it runs.',
+  // Said wherever the service is described, so nothing planned reads as available today.
+  status: 'MDXplora is being built and opens to early-access groups in stages. This site describes it as planned.',
   domain: 'mdxplora.com',
   email: 'info@mdxplora.com',
   // Set as a repository variable for the deploy (see README). A production

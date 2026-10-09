@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 
 const pages = ['/', '/compute/', '/services/', '/early-access/', '/contact/', '/privacy/'];
@@ -116,6 +117,37 @@ test('each page has its own link preview image, matching its headline', async ({
   }
 });
 
+// Our GPUs and the connector to your own machines are planned. Said as available today: "runs on our GPUs".
+const describesCompute = /own workstation or cluster|(?:GPUs|compute) we provide|our GPUs/i;
+const availableToday = /(?<!will )\bruns? (?:with the same settings )?on (?:our GPUs|(?:GPUs|compute) we provide)/i;
+
+test('a page that describes the service says it is planned', async ({ page }) => {
+  const status = 'MDXplora is being built and opens to early-access groups in stages.';
+  for (const path of pages) {
+    await page.goto(path);
+    const text = (await page.locator('main').innerText()).replace(/\s+/g, ' ');
+    const description = (await page.locator('meta[name="description"]').getAttribute('content')) ?? '';
+    if (describesCompute.test(text)) {
+      expect(text, path).toContain(status);
+    }
+    for (const said of [text, description]) {
+      expect(said, path).not.toMatch(availableToday);
+      expect(said, path).not.toMatch(/early access is open\b|in one command/i);
+    }
+  }
+});
+
+test('a link preview image says what is planned', () => {
+  // The image is shown on other sites, without the note on the page. Read from the source, which the
+  // browser tests cannot import (it reads the build's settings).
+  const texts = [...readFileSync('src/data/cards.ts', 'utf8').matchAll(/\btext: '([^']+)'/g)].map((m) => m[1]);
+  expect(texts.length).toBeGreaterThan(2);
+  for (const text of texts) {
+    if (describesCompute.test(text)) expect(text).toMatch(/\bwill\b|planned/);
+    expect(text).not.toMatch(availableToday);
+  }
+});
+
 test('a chosen theme is remembered on the next page', async ({ page }) => {
   await page.goto('/');
   const before = await page.locator('html').getAttribute('data-theme');
@@ -212,6 +244,9 @@ test('a message arrives with a subject naming its topic and sender', async ({ pa
   expect(sent).toHaveLength(1);
   expect(sent[0]._subject).toBe('MDXplora website: Training enquiry from Ada Lovelace');
   expect(sent[0].topic).toBe('training');
+  // The outcome sits beside the button, in the form's own style, not that of the planned note.
+  await expect(page.locator('.status')).toHaveCSS('border-left-width', '0px');
+  await expect(page.locator('.status')).toHaveCSS('padding-left', '0px');
 });
 
 test('a form sent incomplete says what is missing, marks it, and focus lands on the outcome', async ({ page }) => {
