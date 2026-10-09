@@ -33,8 +33,9 @@ Each page's preview image (`/og/<page>.png`, 1200 x 630) is drawn at build time 
 the same image. A page's card title must match its headline; a browser test checks it. To preview one, build and open
 `dist/og/home.png`.
 
-`npm audit` reports a moderate advisory in `fflate`, which the image renderer uses only to decompress the bundled fonts
-at build time. The advisory concerns ZIP archives, which it never reads, and nothing from it reaches the browser.
+The image renderer, satori, asks for `fflate` 0.7.3, which has a moderate advisory; `package.json` gives it 0.7.5, the
+fixed release with the same interface. Do not move it to `fflate` 0.8: satori passes 0.7's output buffer, which 0.8 reads
+as options, so every letter became a placeholder box. The build stops if the fonts cannot be read.
 
 ## Banned terms
 

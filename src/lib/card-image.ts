@@ -159,7 +159,33 @@ function layout(card: Card): Node {
   );
 }
 
+// A font satori cannot read gives every letter the same placeholder box, and the image keeps its size, so nothing
+// else notices. The build stops instead: "I" and "O" must have outlines of their own at every weight.
+let fontsRead: Promise<void> | undefined;
+
+async function outline(text: string, weight: 400 | 500 | 700): Promise<string> {
+  const node = h('div', { display: 'flex', fontSize: 40, fontWeight: weight }, text);
+  const svg = await satori(node as never, { width: 200, height: 80, fonts });
+  return [...svg.matchAll(/ d="([^"]+)"/g)].map((m) => m[1]).join(' ');
+}
+
+function checkFontsRead(): Promise<void> {
+  fontsRead ??= (async () => {
+    for (const { weight } of fonts) {
+      const [i, o] = await Promise.all([outline('I', weight), outline('O', weight)]);
+      if (!i || i === o) {
+        throw new Error(
+          `The link preview images cannot read the Inter ${weight} font: every letter would be a placeholder ` +
+            'box. Check what satori decompresses the font with (see DEVELOPMENT.md).',
+        );
+      }
+    }
+  })();
+  return fontsRead;
+}
+
 export async function renderCard(card: Card): Promise<Uint8Array<ArrayBuffer>> {
+  await checkFontsRead();
   const foreground = await satori(layout(card) as never, { width: WIDTH, height: HEIGHT, fonts });
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">` +
