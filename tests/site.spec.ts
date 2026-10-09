@@ -171,6 +171,22 @@ test('a Config written by the Agent is validated, in those words', async ({ page
   expect(readme).toMatch(/\*\*Describe it\.\*\*[^\n]*\n?[^\n]*validates it/);
 });
 
+test('DEVELOPMENT.md names every check script', () => {
+  const scripts = Object.keys(JSON.parse(readFileSync('package.json', 'utf8')).scripts);
+  const development = readFileSync('DEVELOPMENT.md', 'utf8');
+  for (const name of scripts.filter((name) => name.startsWith('check'))) {
+    expect(development).toContain(`npm run ${name} `);
+  }
+});
+
+test('Dependabot leaves fflate on 0.7 while the override holds it there', () => {
+  const pinned = JSON.parse(readFileSync('package.json', 'utf8')).overrides.satori.fflate;
+  const dependabot = readFileSync('.github/dependabot.yml', 'utf8');
+  if (pinned.startsWith('0.7.')) {
+    expect(dependabot).toMatch(/- dependency-name: fflate\n\s+versions: \['>= 0\.8\.0'\]/);
+  }
+});
+
 test('a chosen theme is remembered on the next page', async ({ page }) => {
   await page.goto('/');
   const before = await page.locator('html').getAttribute('data-theme');
@@ -203,6 +219,10 @@ test('the privacy page answers Do Not Track and says what Formspree receives', a
   await expect(prose).toContainText('Global Privacy Control');
   await expect(prose).toContainText('your IP address and the name of your browser');
   await expect(prose).toContainText('With JavaScript turned off');
+  // Mail written to the address directly takes the same route as the form's.
+  await expect(prose).toContainText(
+    "Everything sent to info@mdxplora.com, from the form or written to it directly, is forwarded by Cloudflare Email Routing to our mailbox in Google's Gmail.",
+  );
 });
 
 test('the privacy page names everything the site keeps in the browser', async ({ page }) => {

@@ -14,6 +14,10 @@ updates:
       npm:
         patterns: ['*']
         update-types: [minor, patch]
+    ignore:
+      # Kept at 0.7.5 by an override: satori cannot read fonts with 0.8, so every preview image shows boxes.
+      - dependency-name: fflate
+        versions: ['>= 0.8.0']
     open-pull-requests-limit: 5
 
   - package-ecosystem: github-actions

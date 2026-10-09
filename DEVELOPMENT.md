@@ -18,6 +18,7 @@ Before pushing:
 npm run format
 PUBLIC_FORMSPREE_ID=<form id> npm run build
 npm run check        # types, internal links, banned terms
+npm run check:site   # types and internal links only, without the banned-terms list
 npm test             # browser and accessibility tests against the build
 npm run lighthouse   # speed, accessibility, best practice and SEO scores
 ```
