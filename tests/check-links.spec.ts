@@ -177,13 +177,20 @@ test('srcset and imagesrcset: each candidate is read as the HTML standard reads 
       '<h1 id="top">Home</h1>' +
         '<img src="/ok.png" srcset="/ok.png 1x, /missing-2x.png 2x" alt="">' +
         '<img src="/ok.png" srcset="/ok.png 480w, /missing-wide.png 960w" sizes="100vw" alt="">' +
-        '<img src="/ok.png" srcset="data:text/plain;charset=utf-8,one,/two,three 1x, /missing-after-data.png 2x" alt="">',
+        '<img src="/ok.png" srcset="data:text/plain;charset=utf-8,one,/two,three 1x, /missing-after-data.png 2x" alt="">' +
+        '<img src="/ok.png" srcset="/ok.png 1x ((x), /missing-after-parens.png 2x" alt="">',
       '<link rel="preload" as="image" imagesrcset="/ok.png 1x, /missing-preload.png 2x">',
     ),
   });
   expect(run.status, run.output).toBe(1);
   expect(run.reported).toEqual(
-    ['/missing-2x.png', '/missing-wide.png', '/missing-after-data.png', '/missing-preload.png'].sort(),
+    [
+      '/missing-2x.png',
+      '/missing-wide.png',
+      '/missing-after-data.png',
+      '/missing-after-parens.png',
+      '/missing-preload.png',
+    ].sort(),
   );
 });
 

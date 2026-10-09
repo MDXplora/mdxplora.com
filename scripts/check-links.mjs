@@ -67,7 +67,8 @@ function* addresses(value, key) {
 }
 
 // The address of each candidate in a srcset, read as the HTML standard does: an address runs to the next space, so a
-// data: address keeps its comma, and a comma ends a candidate only after its descriptors.
+// data: address keeps its comma, and a comma ends a candidate only after its descriptors. In the descriptors a comma
+// inside parentheses does not end the candidate, and the first ")" closes them, however many "(" came before.
 function* srcsetAddresses(value) {
   let i = 0;
   while (i < value.length) {
@@ -77,10 +78,10 @@ function* srcsetAddresses(value) {
     let address = value.slice(start, i);
     if (address.endsWith(',')) address = address.replace(/,+$/, '');
     else {
-      let depth = 0;
-      for (; i < value.length && !(value[i] === ',' && depth === 0); i++) {
-        if (value[i] === '(') depth++;
-        else if (value[i] === ')') depth = Math.max(0, depth - 1);
+      let inParens = false;
+      for (; i < value.length && !(value[i] === ',' && !inParens); i++) {
+        if (value[i] === '(') inParens = true;
+        else if (value[i] === ')') inParens = false;
       }
     }
     if (address) yield address;
