@@ -250,6 +250,62 @@ test('structured data: an address given as a node reference {"@id": ...} is read
   expect(run.reported).toEqual(['/missing-target/', 'https://mdxplora.com/missing-crumb/'].sort());
 });
 
+test('structured data: a node reference names a node, so only the page of its @id is checked', () => {
+  const run = checkLinks({
+    'index.html': html(
+      '<h1 id="top">Home</h1>',
+      jsonLd({
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'Organization',
+            '@id': 'https://mdxplora.com/#organization',
+            logo: { '@id': 'https://mdxplora.com/#logo' },
+            image: { '@id': '#primaryimage' },
+          },
+          {
+            '@type': 'Article',
+            mainEntityOfPage: { '@id': 'https://mdxplora.com/about/#webpage' },
+            isBasedOn: { '@id': 'https://mdxplora.com/gone/#webpage' },
+          },
+          {
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              {
+                '@type': 'ListItem',
+                position: 1,
+                item: { '@type': 'WebPage', '@id': 'https://mdxplora.com/nope/', name: 'Nope' },
+              },
+            ],
+          },
+        ],
+      }),
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(['https://mdxplora.com/gone/#webpage', 'https://mdxplora.com/nope/'].sort());
+});
+
+test('structured data: a target written as a template is read as one', () => {
+  const run = checkLinks({
+    'index.html': html(
+      '<h1 id="top">Home</h1>',
+      jsonLd({
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        url: '/',
+        potentialAction: [
+          { '@type': 'SearchAction', target: 'https://mdxplora.com/about/{?q}' },
+          { '@type': 'SearchAction', target: 'https://mdxplora.com/docs/{slug}' },
+          { '@type': 'SearchAction', target: '/missing-search/?q={q}' },
+        ],
+      }),
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(['/missing-search/?q={q}']);
+});
+
 test('structured data: a urlTemplate is checked up to its first placeholder, unless that is in the path', () => {
   const entry = (urlTemplate: string) => ({ '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate } });
   const run = checkLinks({

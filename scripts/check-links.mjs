@@ -37,8 +37,9 @@ function onSite(link) {
 
 // The values in structured data that are addresses: those of the properties schema.org gives a URL, and any ending in
 // "Url". An address may also sit inside the property's value, such as the urlTemplate of a potentialAction's target,
-// or be the whole value as a node reference, such as "item": {"@id": "https://mdxplora.com/x/"}. Names, descriptions and
-// the @id names of nodes elsewhere are not links.
+// or be the @id of a node given as the value, such as "item": {"@id": "https://mdxplora.com/x/", "name": "X"}, when
+// that node has no url of its own. An @id's fragment names a node in the graph, not an element, so only its page is
+// checked. Names, descriptions and the @id names of nodes elsewhere are not links.
 const ADDRESS_KEYS = new Set([
   'url',
   'logo',
@@ -63,17 +64,19 @@ const ADDRESS_KEYS = new Set([
 function* addresses(value, key) {
   const isAddress = key && (ADDRESS_KEYS.has(key) || key.endsWith('Url'));
   if (typeof value === 'string') {
-    if (key === 'urlTemplate') {
+    if (key === 'urlTemplate' || (isAddress && value.includes('{'))) {
       const base = templateBase(value);
       if (base !== undefined) yield [value, base];
     } else if (isAddress) yield [value, value];
   } else if (Array.isArray(value)) {
     for (const v of value) yield* addresses(v, key);
   } else if (value && typeof value === 'object') {
-    const keys = Object.keys(value);
-    if (isAddress && keys.length === 1 && keys[0] === '@id' && typeof value['@id'] === 'string') {
-      yield [value['@id'], value['@id']];
-    } else for (const [k, v] of Object.entries(value)) yield* addresses(v, k);
+    const id = value['@id'];
+    if (isAddress && typeof id === 'string' && !('url' in value)) {
+      const page = id.split('#')[0];
+      if (page) yield [id, page];
+    }
+    for (const [k, v] of Object.entries(value)) yield* addresses(v, k);
   }
 }
 
