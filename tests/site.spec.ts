@@ -140,6 +140,8 @@ test('a page that describes the service says it is planned', async ({ page }) =>
     for (const said of [text, description]) {
       expect(said, path).not.toMatch(availableToday);
       expect(said, path).not.toMatch(/early access is open\b|\bis in early access\b|in one command/i);
+      // A study on the service is planned, and MDXplora validates its Config rather than checking it.
+      expect(said, path).not.toMatch(/\bstudy is reproducible\b|\bchecked before it runs\b/i);
     }
   }
 });
@@ -160,6 +162,18 @@ test('the README says what is planned', () => {
   const opening = readme.split('\n\n')[2];
   expect(opening).toContain('MDXplora is being built and opens to early-access groups in stages.');
   expect(readme).not.toMatch(/\bis in early access\b/i);
+  // The ways to start are planned too.
+  const ways = readme.split('## Three ways to start')[1].split('\n## ')[0];
+  const items = ways.split('\n- ').slice(1);
+  expect(items).toHaveLength(3);
+  for (const item of items) expect(item).toMatch(/\bwill\b/);
+});
+
+test('the answer to "Can I use MDXplora today?" says it plainly', async ({ page }) => {
+  await page.goto('/');
+  const answer = (await page.locator('details', { hasText: 'Can I use MDXplora today?' }).locator('p').textContent())!;
+  expect(answer).toContain('MDXplora is being built and opens to early-access groups in stages');
+  expect(answer.match(/\bgroups\b/g), 'says "groups" once').toHaveLength(1);
 });
 
 test('a Config written by the Agent is validated, in those words', async ({ page }) => {
@@ -168,7 +182,7 @@ test('a Config written by the Agent is validated, in those words', async ({ page
   await expect(describe).toContainText('validates it');
   await expect(describe).not.toContainText(/\bchecks?\b/);
   const readme = readFileSync('README.md', 'utf8');
-  expect(readme).toMatch(/\*\*Describe it\.\*\*[^\n]*\n?[^\n]*validates it/);
+  expect(readme).toMatch(/\*\*Describe it\.\*\*[^\n]*\n?[^\n]*validates? it/);
 });
 
 test('DEVELOPMENT.md names every check script', () => {

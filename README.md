@@ -27,10 +27,10 @@ run again, by someone who was not there.
 
 ## Three ways to start
 
-- **Describe it.** Say what you want in a sentence. The Agent writes the study's Config, and MDXplora validates it
-  before anything runs.
-- **Build it.** A form with every setting visible and explained, checked as you go.
-- **Bring it.** Upload a Config you already have. It runs as written.
+- **Describe it.** Say what you want in a sentence. The Agent will write the study's Config, and MDXplora will
+  validate it before anything runs.
+- **Build it.** A form will show every setting, explained, and validate each one as you go.
+- **Bring it.** Upload a Config you already have. It will run as written.
 
 ## What you can study
 
