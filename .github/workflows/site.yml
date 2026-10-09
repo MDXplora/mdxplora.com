@@ -32,6 +32,9 @@ jobs:
     steps:
       # Actions are pinned to a commit, which cannot be moved; Dependabot keeps them current.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # No token left in .git/config for the npm and npx steps that follow.
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -41,18 +44,18 @@ jobs:
       - run: npm ci
       - run: npm run format:check
 
-      # The banned-terms list is a secret, so pull requests from forks, which
-      # cannot read it, are checked when they reach main instead.
-      - name: Check the source for banned terms
-        if: env.HAS_BANNED_TERMS == 'true'
+      - run: npm run build
+      # npm run check without the banned terms, whose list goes only to the step below.
+      - run: npm run check:site
+
+      # The source and the built pages. The list is a secret, so pull requests
+      # from forks, which cannot read it, are checked when they reach main. On
+      # main the list must be there: without it the check fails, not skips.
+      - name: Check for banned terms
+        if: env.HAS_BANNED_TERMS == 'true' || github.event_name != 'pull_request'
         run: node scripts/check-terms.mjs
         env:
-          BANNED_TERMS: ${{ secrets.BANNED_TERMS }}
-
-      - run: npm run build
-      - run: npm run check
-        env:
-          CI: ${{ env.HAS_BANNED_TERMS == 'true' && 'true' || '' }}
+          CI: 'true'
           BANNED_TERMS: ${{ secrets.BANNED_TERMS }}
 
       - run: npx playwright install --with-deps chromium
