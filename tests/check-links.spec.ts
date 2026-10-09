@@ -324,6 +324,48 @@ test('structured data: the @id of a node that gives its own address is only its 
   expect(run.reported).toEqual(['/missing-id/']);
 });
 
+test('structured data: only a url, contentUrl or embedUrl is the own address of a node', () => {
+  const run = checkLinks({
+    'index.html': html(
+      '<h1 id="top">Home</h1>',
+      jsonLd({
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', item: { '@id': 'https://mdxplora.com/gone-image/', image: '/ok.png' } },
+          { '@type': 'ListItem', item: { '@id': '/gone-logo/', logo: '/ok.png', license: '/about/' } },
+          { '@type': 'ListItem', item: { '@id': '/gone-same/', sameAs: 'https://example.org/x' } },
+          { '@type': 'ListItem', item: { '@id': '/gone-same-list/', sameAs: ['https://example.org/x'] } },
+          { '@type': 'ListItem', item: { '@id': '/gone-thumb/', thumbnailUrl: '/ok.png' } },
+          { '@type': 'ListItem', item: { '@id': '/gone-content/', contentUrl: '/ok.png' } },
+          { '@type': 'ListItem', item: { '@id': '/gone-embed/', embedUrl: '/about/' } },
+        ],
+      }),
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(
+    ['https://mdxplora.com/gone-image/', '/gone-logo/', '/gone-same/', '/gone-same-list/', '/gone-thumb/'].sort(),
+  );
+});
+
+test('structured data: an empty or blank url is no address, so the @id is checked', () => {
+  const run = checkLinks({
+    'index.html': html(
+      '<h1 id="top">Home</h1>',
+      jsonLd({
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        url: '/',
+        isBasedOn: { '@id': '/missing-empty/', url: '' },
+        relatedLink: { '@id': '/missing-blank/', url: '   ' },
+      }),
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(['/missing-blank/', '/missing-empty/']);
+});
+
 test('structured data: a placeholder left in an address is still reported, and the @context is not read', () => {
   const run = checkLinks({
     'index.html': html(
