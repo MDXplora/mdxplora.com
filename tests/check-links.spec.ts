@@ -194,6 +194,21 @@ test('srcset and imagesrcset: each candidate is read as the HTML standard reads 
   );
 });
 
+test('srcset: only ASCII whitespace ends an address, as the HTML standard reads it', () => {
+  // A no-break space (U+00A0) is part of the address, not a separator, and is not skipped before an address.
+  const nbsp = '\u00a0';
+  const run = checkLinks({
+    [`no${nbsp}break.png`]: 'png',
+    'index.html': html(
+      '<h1 id="top">Home</h1>' +
+        `<img src="/ok.png" srcset="/no${nbsp}break.png 1x, /missing${nbsp}2x.png 2x" alt="">` +
+        `<img src="/ok.png" srcset="/ok.png 1x,${nbsp}/not-from-the-root.png 2x" alt="">`,
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual([`/missing${nbsp}2x.png`]);
+});
+
 test('a link to /page#name without the trailing slash is checked against that page', () => {
   const run = checkLinks({
     'index.html': html('<h1 id="top">Home</h1><a href="/about#team">Team</a><a href="/about#nowhere">Nowhere</a>'),
