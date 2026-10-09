@@ -10,14 +10,18 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   scroll-behavior: smooth;
-  /* Room for the sticky header, so a focused element or a linked heading is never scrolled under it. */
-  scroll-padding-top: 5rem;
+  /* The sticky header's height, which its bar takes. In pixels, so a larger text size leaves it the same. */
+  --header-height: 64px;
+  /* Room for the header, its border and a little more, so a focused element or a linked heading is never scrolled
+     under it, nor far below it. */
+  scroll-padding-top: calc(var(--header-height) + 16px);
 }
 
-/* Without JavaScript the phone header shows its links, on two rows at the narrowest widths. */
+/* Without JavaScript the phone header shows its links on as many rows as the width and the text size need, so its
+   height cannot be known here. It scrolls away with the page instead (SiteHeader.astro), and needs no room. */
 @media (scripting: none) and (max-width: 860px) {
   html {
-    scroll-padding-top: 9rem;
+    scroll-padding-top: 0;
   }
 }
 

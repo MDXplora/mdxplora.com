@@ -97,7 +97,7 @@ const here = Astro.url.pathname;
     border-bottom-color: var(--border);
   }
   .bar {
-    height: 64px;
+    height: var(--header-height);
     display: flex;
     align-items: center;
     gap: 2rem;
@@ -191,16 +191,20 @@ const here = Astro.url.pathname;
     }
   }
   /* Without JavaScript the buttons cannot work: the links show instead, on a
-     line of their own where the bar is narrow. */
+     line of their own where the bar is narrow. The header is then as tall as
+     its rows, so it scrolls away with the page rather than covering it. */
   @media (scripting: none) {
     .menu-toggle {
       display: none;
     }
   }
   @media (scripting: none) and (max-width: 860px) {
+    .site-header {
+      position: static;
+    }
     .bar {
       height: auto;
-      min-height: 64px;
+      min-height: var(--header-height);
       flex-wrap: wrap;
       column-gap: 1rem;
       row-gap: 0.5rem;

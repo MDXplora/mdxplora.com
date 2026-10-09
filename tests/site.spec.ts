@@ -563,3 +563,51 @@ test('sign-in appears only when the service address is set, and leads there', as
     await expect(page.locator('.site-header .actions a', { hasText: /^Sign in$/ })).toBeVisible();
   }
 });
+
+// WCAG 2.2 SC 2.4.11 with larger text: the room kept above a focused element or a linked section follows the header's
+// own height, so nothing is hidden under the header or left far below it. Without JavaScript the phone header grows
+// with the text; at the narrowest width it is the tallest.
+const largerText = [
+  { label: 'with JavaScript', javaScriptEnabled: true, fontSize: '32px' },
+  { label: 'without JavaScript, at the narrowest width', javaScriptEnabled: false, fontSize: '40px', narrow: true },
+];
+
+for (const { label, javaScriptEnabled, fontSize, narrow } of largerText) {
+  test.describe(`with text at ${fontSize}, ${label}`, () => {
+    // A phone's browser would zoom out on text this large at 320 px; a plain window keeps the layout to measure.
+    test.use({ javaScriptEnabled, ...(narrow ? { viewport: { width: 320, height: 640 }, isMobile: false } : {}) });
+
+    test('a linked section and every focused element sit just clear of the header', async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.goto('/');
+      await page.evaluate((size) => (document.documentElement.style.fontSize = size), fontSize);
+      await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe(fontSize);
+      const below = (selector: string) =>
+        page.evaluate((selector) => {
+          const el = document.querySelector(selector)!;
+          const header = document.querySelector('.site-header')!.getBoundingClientRect();
+          return Math.round(el.getBoundingClientRect().top - Math.max(0, header.bottom));
+        }, selector);
+
+      await page.evaluate(() => (location.hash = 'faq'));
+      await expect.poll(() => below('#faq'), 'not far below the header').toBeLessThanOrEqual(24);
+      expect(await below('#faq'), 'not under the header').toBeGreaterThanOrEqual(0);
+
+      // Back up the page with Shift+Tab: nothing focused is under the header.
+      await page.locator('footer a').last().focus();
+      const hidden: string[] = [];
+      for (let i = 0; i < 40; i++) {
+        await page.keyboard.press('Shift+Tab');
+        const name = await page.evaluate(() => {
+          const el = document.activeElement as HTMLElement | null;
+          const header = document.querySelector('.site-header')!;
+          if (!el || header.contains(el) || el === document.body || el.matches('.skip-link')) return null;
+          const under = el.getBoundingClientRect().top < header.getBoundingClientRect().bottom - 1;
+          return under ? el.outerHTML.slice(0, 60) : null;
+        });
+        if (name) hidden.push(name);
+      }
+      expect(hidden).toEqual([]);
+    });
+  });
+}
