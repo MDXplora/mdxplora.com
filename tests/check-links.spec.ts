@@ -110,6 +110,67 @@ test('structured data: names, descriptions and @id names are not links', () => {
   expect(run.status, run.output).toBe(0);
 });
 
+test('structured data: other properties schema.org gives an address are read too', () => {
+  const run = checkLinks({
+    'index.html': html(
+      '<h1 id="top">Home</h1>',
+      jsonLd({
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://mdxplora.com/' },
+              { '@type': 'ListItem', position: 2, name: '/Missing', item: 'https://mdxplora.com/missing-crumb/' },
+            ],
+          },
+          {
+            '@type': 'WebSite',
+            url: '/',
+            potentialAction: [
+              {
+                '@type': 'SearchAction',
+                target: { '@type': 'EntryPoint', urlTemplate: 'https://mdxplora.com/missing-search/?q={q}' },
+                'query-input': 'required name=q',
+              },
+              { '@type': 'ViewAction', target: '/missing-target/' },
+            ],
+          },
+          {
+            '@type': 'WebPage',
+            url: '/about/',
+            screenshot: '/missing-screenshot.png',
+            thumbnail: '/missing-thumbnail.png',
+            relatedLink: ['/about/', '/missing-related/'],
+            significantLink: '/missing-significant/',
+            isBasedOn: '/missing-basis/',
+            archivedAt: '/missing-archive/',
+            citation: ['/missing-citation/', { '@type': 'CreativeWork', name: '/not-a-link', url: '/missing-cited/' }],
+          },
+          { '@type': 'Place', name: '#2 on the map', hasMap: '/missing-map/' },
+        ],
+      }),
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(
+    [
+      'https://mdxplora.com/missing-crumb/',
+      'https://mdxplora.com/missing-search/?q={q}',
+      '/missing-target/',
+      '/missing-screenshot.png',
+      '/missing-thumbnail.png',
+      '/missing-related/',
+      '/missing-significant/',
+      '/missing-basis/',
+      '/missing-archive/',
+      '/missing-citation/',
+      '/missing-cited/',
+      '/missing-map/',
+    ].sort(),
+  );
+});
+
 test('srcset and imagesrcset: each candidate is read as the HTML standard reads it', () => {
   const run = checkLinks({
     'index.html': html(

@@ -36,8 +36,28 @@ function onSite(link) {
 }
 
 // The values in structured data that are addresses: those of the properties schema.org gives a URL, and any ending in
-// "Url". Names, descriptions and @id names of nodes are not links.
-const ADDRESS_KEYS = new Set(['url', 'logo', 'image', 'sameAs', 'mainEntityOfPage', 'license', 'codeRepository']);
+// "Url". An address may also sit inside the property's value, such as the urlTemplate of a potentialAction's target.
+// Names, descriptions and @id names of nodes are not links.
+const ADDRESS_KEYS = new Set([
+  'url',
+  'logo',
+  'image',
+  'sameAs',
+  'mainEntityOfPage',
+  'license',
+  'codeRepository',
+  'item',
+  'target',
+  'urlTemplate',
+  'screenshot',
+  'thumbnail',
+  'hasMap',
+  'relatedLink',
+  'significantLink',
+  'isBasedOn',
+  'archivedAt',
+  'citation',
+]);
 function* addresses(value, key) {
   if (typeof value === 'string') {
     if (key && (ADDRESS_KEYS.has(key) || key.endsWith('Url'))) yield value;
