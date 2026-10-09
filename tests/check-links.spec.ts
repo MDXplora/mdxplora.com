@@ -382,7 +382,42 @@ test('structured data: a placeholder left in an address is still reported, and t
     ),
   });
   expect(run.status, run.output).toBe(1);
-  expect(run.reported).toEqual(['/missing{#s}', 'https://mdxplora.com/docs/{slug}'].sort());
+  expect(run.reported).toEqual(
+    ['/missing{#s}', 'https://mdxplora.com/docs/{slug} (a placeholder left in the address)'].sort(),
+  );
+});
+
+test('a placeholder left in an address, even in its query, is reported outside a template', () => {
+  const run = checkLinks({
+    'index.html': html(
+      '<h1 id="top">Home</h1><a href="/about/?tab={tab}">Tab</a><a href="/about/#{section}">Section</a>',
+      jsonLd({
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        url: 'https://mdxplora.com/about/?q={q}',
+        sameAs: ['https://example.org/?q={q}', '/about/?ref={ref}'],
+        isBasedOn: { '@id': '/about/?v={v}' },
+        mainEntityOfPage: { '@id': '/about/#{node}' },
+        potentialAction: [
+          { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: '/about/?q={q}' } },
+          { '@type': 'SearchAction', target: 'https://mdxplora.com/about/?q={q}' },
+        ],
+      }),
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  const reason = ' (a placeholder left in the address)';
+  expect(run.reported).toEqual(
+    [
+      '/about/?tab={tab}',
+      '/about/#{section}',
+      'https://mdxplora.com/about/?q={q}',
+      '/about/?ref={ref}',
+      '/about/?v={v}',
+    ]
+      .map((link) => link + reason)
+      .sort(),
+  );
 });
 
 test('structured data: a urlTemplate is checked up to its first placeholder, unless that is in the path', () => {

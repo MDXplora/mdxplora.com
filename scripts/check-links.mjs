@@ -2,6 +2,7 @@
 // element with that id. Links written as full addresses on this site (https://mdxplora.com/..., such as a page's
 // canonical address and its preview image) count as internal. Read from href, src and content attributes, from each
 // candidate in srcset and imagesrcset, and from the address values in structured data (JSON-LD), such as url and logo.
+// A "{" in an internal link, other than in a URL template, is a placeholder left unfilled and is reported.
 //
 // External links are not fetched.
 //
@@ -39,7 +40,8 @@ function onSite(link) {
 // "Url". An address may also sit inside the property's value, such as the urlTemplate of a potentialAction's target,
 // or be the @id of a node given as the value, such as "item": {"@id": "https://mdxplora.com/x/", "name": "X"}, when
 // that node gives no address of its own. An @id's fragment names a node in the graph, not an element, so only its page
-// is checked. A urlTemplate, or a target written as one, is read up to its first placeholder. Names, descriptions, the
+// is checked. A urlTemplate, or a target written as one, is read up to its first placeholder; anywhere else, a "{" in
+// an address on this site, even in its query, is reported as a placeholder left unfilled. Names, descriptions, the
 // @context and the @id names of nodes elsewhere are not links.
 const ADDRESS_KEYS = new Set([
   'url',
@@ -155,6 +157,11 @@ for (const page of pages(DIST)) {
   const links = found.map(([written, link]) => [written, onSite(link)]).filter(([, href]) => href);
   for (const [written, href] of links) {
     checked++;
+    // A template is checked up to its first placeholder, so a "{" left in what is checked is a placeholder never filled.
+    if (href.includes('{')) {
+      broken.push(`${relative(DIST, page)} → ${written} (a placeholder left in the address)`);
+      continue;
+    }
     const [beforeHash, fragment] = href.split('#');
     let path, id;
     try {
