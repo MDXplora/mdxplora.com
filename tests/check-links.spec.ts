@@ -306,6 +306,43 @@ test('structured data: a target written as a template is read as one', () => {
   expect(run.reported).toEqual(['/missing-search/?q={q}']);
 });
 
+test('structured data: the @id of a node that gives its own address is only its name', () => {
+  const run = checkLinks({
+    'index.html': html(
+      '<h1 id="top">Home</h1>',
+      jsonLd({
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        url: '/',
+        image: { '@type': 'ImageObject', '@id': 'https://mdxplora.com/images/logo#img', contentUrl: '/ok.png' },
+        isBasedOn: { '@type': 'WebPage', '@id': 'https://mdxplora.com/gone/', url: 'https://mdxplora.com/about/' },
+        relatedLink: { '@type': 'WebPage', '@id': '/missing-id/', url: null },
+      }),
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(['/missing-id/']);
+});
+
+test('structured data: a placeholder left in an address is still reported, and the @context is not read', () => {
+  const run = checkLinks({
+    'index.html': html(
+      '<h1 id="top">Home</h1>',
+      jsonLd({
+        '@context': [
+          'https://schema.org',
+          { image: { '@id': '/vocab/image' }, url: { '@id': 'https://mdxplora.com/ns#url', '@type': '@id' } },
+        ],
+        '@type': 'WebSite',
+        url: 'https://mdxplora.com/docs/{slug}',
+        potentialAction: { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: '/missing{#s}' } },
+      }),
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(['/missing{#s}', 'https://mdxplora.com/docs/{slug}'].sort());
+});
+
 test('structured data: a urlTemplate is checked up to its first placeholder, unless that is in the path', () => {
   const entry = (urlTemplate: string) => ({ '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate } });
   const run = checkLinks({

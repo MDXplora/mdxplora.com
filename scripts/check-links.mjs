@@ -38,8 +38,9 @@ function onSite(link) {
 // The values in structured data that are addresses: those of the properties schema.org gives a URL, and any ending in
 // "Url". An address may also sit inside the property's value, such as the urlTemplate of a potentialAction's target,
 // or be the @id of a node given as the value, such as "item": {"@id": "https://mdxplora.com/x/", "name": "X"}, when
-// that node has no url of its own. An @id's fragment names a node in the graph, not an element, so only its page is
-// checked. Names, descriptions and the @id names of nodes elsewhere are not links.
+// that node gives no address of its own (a url, contentUrl or the like). An @id's fragment names a node in the graph,
+// not an element, so only its page is checked. A urlTemplate, or a target written as one, is read up to its first
+// placeholder. Names, descriptions, the @context and the @id names of nodes elsewhere are not links.
 const ADDRESS_KEYS = new Set([
   'url',
   'logo',
@@ -60,11 +61,17 @@ const ADDRESS_KEYS = new Set([
   'archivedAt',
   'citation',
 ]);
-// Each address as [written, checked]: these differ only for a urlTemplate with a placeholder.
+const isAddressKey = (key) => Boolean(key) && (ADDRESS_KEYS.has(key) || key.endsWith('Url'));
+
+// Whether a node gives an address of its own, so that its @id is only its name.
+const hasOwnAddress = (node) =>
+  Object.entries(node).some(([k, v]) => isAddressKey(k) && typeof v === 'string' && v.trim() !== '');
+
+// Each address as [written, checked]: these differ for a template with a placeholder, and for an @id with a fragment.
 function* addresses(value, key) {
-  const isAddress = key && (ADDRESS_KEYS.has(key) || key.endsWith('Url'));
+  const isAddress = isAddressKey(key);
   if (typeof value === 'string') {
-    if (key === 'urlTemplate' || (isAddress && value.includes('{'))) {
+    if (key === 'urlTemplate' || (key === 'target' && value.includes('{'))) {
       const base = templateBase(value);
       if (base !== undefined) yield [value, base];
     } else if (isAddress) yield [value, value];
@@ -72,11 +79,11 @@ function* addresses(value, key) {
     for (const v of value) yield* addresses(v, key);
   } else if (value && typeof value === 'object') {
     const id = value['@id'];
-    if (isAddress && typeof id === 'string' && !('url' in value)) {
+    if (isAddress && typeof id === 'string' && !hasOwnAddress(value)) {
       const page = id.split('#')[0];
       if (page) yield [id, page];
     }
-    for (const [k, v] of Object.entries(value)) yield* addresses(v, k);
+    for (const [k, v] of Object.entries(value)) if (k !== '@context') yield* addresses(v, k);
   }
 }
 
