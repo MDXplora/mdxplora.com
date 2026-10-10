@@ -45,7 +45,8 @@ export const nav = [
 
 export const footer = [
   {
-    title: 'Product',
+    key: 'platform',
+    title: 'Platform',
     links: [
       { label: 'How it works', href: '/#how' },
       { label: 'Compute', href: '/compute/' },
@@ -54,6 +55,7 @@ export const footer = [
     ],
   },
   {
+    key: 'services',
     title: 'Services',
     links: [
       { label: 'Studies run for you', href: '/services/' },
@@ -62,7 +64,8 @@ export const footer = [
     ],
   },
   {
-    title: 'Company',
+    key: 'about',
+    title: 'About',
     links: [
       { label: 'Contact', href: '/contact/' },
       { label: 'Privacy', href: '/privacy/' },

@@ -3,9 +3,9 @@ import Logo from './Logo.astro';
 import { footer, site } from '../data/site';
 
 const year = new Date().getFullYear();
-// Sign in joins the product links once the service's address is set.
+// Sign in joins the platform's links once the service's address is set.
 const columns = footer.map((column) =>
-  column.title === 'Product' && site.appUrl
+  column.key === 'platform' && site.appUrl
     ? { ...column, links: [...column.links, { label: 'Sign in', href: site.appUrl }] }
     : column,
 );

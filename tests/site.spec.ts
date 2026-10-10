@@ -230,6 +230,51 @@ test('the engine is named only where results must cite it, and nothing links to 
   }
 });
 
+// Until a legal entity is formed, MDXplora is the platform: no page, no part of a page's head, no form answer and no
+// file served beside the pages calls it a company or speaks of customers or commerce. The README and DEVELOPMENT.md
+// are read by visitors too, and the preview images are drawn from the cards' text.
+const commerceWords =
+  /\b(compan(?:y|ies)|customers?|commerc\w*|corporat\w*|incorporated|LLC|Ltd|Inc\b|enterprises?|business\w*|engagements?|products?)\b/i;
+
+test('the check for commercial words finds them, and only them', () => {
+  for (const words of [
+    'Company',
+    'A company',
+    'a customer',
+    'commercial use',
+    'used commercially',
+    'e-commerce',
+    'Example Labs LLC',
+    'Example Ltd',
+    'Acme Inc.',
+    'Product',
+    'How an engagement works',
+  ])
+    expect(words).toMatch(commerceWords);
+  for (const words of ['companion', 'accompany', 'production', 'the platform', 'In industry', 'include', 'incoming'])
+    expect(words).not.toMatch(commerceWords);
+});
+
+// Each word found, with a little of the text around it.
+function commerceFound(text: string): string[] {
+  const every = new RegExp(commerceWords.source, 'gi');
+  return [...text.matchAll(every)].map((m) => text.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40));
+}
+
+test('nothing calls MDXplora a company or speaks of customers', async ({ page, request }) => {
+  for (const path of ['/', '/compute/', '/services/', '/early-access/', '/contact/', '/privacy/', '/no-such-page/']) {
+    await page.goto(path);
+    expect(commerceFound(await page.content()), path).toEqual([]);
+  }
+  for (const path of ['/.well-known/security.txt', '/manifest.webmanifest', '/robots.txt']) {
+    const response = await request.get(path);
+    expect(response.ok(), path).toBe(true);
+    expect(commerceFound(await response.text()), path).toEqual([]);
+  }
+  for (const file of ['README.md', 'DEVELOPMENT.md', 'src/data/cards.ts'])
+    expect(commerceFound(readFileSync(file, 'utf8')), file).toEqual([]);
+});
+
 test('the privacy page answers Do Not Track and says what Formspree receives', async ({ page }) => {
   await page.goto('/privacy/');
   const prose = page.locator('.prose');
