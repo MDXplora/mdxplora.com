@@ -558,7 +558,16 @@ test('early-access questions show for that topic only, and are sent only with it
   const early = page.getByRole('group', { name: /About your work/ });
   await expect(early).toBeVisible();
   await early.getByLabel('Where you work').selectOption('An academic research group');
-  await early.getByLabel('Compute you have now').selectOption('A workstation with a GPU');
+  const compute = early.getByLabel('Compute you have now');
+  await expect(compute.locator('option')).toHaveText([
+    'Choose one',
+    'None yet',
+    'A workstation with a GPU',
+    'A cluster (at a university, a national centre or in industry)',
+    'Cloud GPUs',
+    'Not sure',
+  ]);
+  await compute.selectOption('A cluster (at a university, a national centre or in industry)');
   await early.getByLabel('What you want to simulate').fill('A small protein in water.');
 
   await page.getByLabel('What is it about?').selectOption('support');
@@ -572,7 +581,7 @@ test('early-access questions show for that topic only, and are sent only with it
   expect(sent[0]).toMatchObject({
     _subject: 'MDXplora website: Early access request from Ada Lovelace',
     'where you work': 'An academic research group',
-    'compute you have now': 'A workstation with a GPU',
+    'compute you have now': 'A cluster (at a university, a national centre or in industry)',
     'what you want to simulate': 'A small protein in water.',
   });
 
@@ -740,7 +749,11 @@ test('sign-in appears only when the service address is set, and leads there', as
   expect(targets.size).toBe(1);
   const [target] = [...targets];
   expect(target).toMatch(/^https:\/\/[a-z0-9.-]+\/$/);
-  await expect(page.locator('footer a', { hasText: /^Sign in$/ })).toBeVisible();
+  // In the footer, it is the last of the platform's links.
+  await expect(page.locator('footer a', { hasText: /^Sign in$/ })).toHaveCount(1);
+  const platform = page.locator('footer nav[aria-label="Platform"] a');
+  await expect(platform.last()).toHaveText('Sign in');
+  await expect(platform.last()).toBeVisible();
   if (isMobile) {
     await page.locator('.menu-toggle').click();
     await expect(page.locator('#mobile-menu a', { hasText: /^Sign in$/ })).toBeVisible();
