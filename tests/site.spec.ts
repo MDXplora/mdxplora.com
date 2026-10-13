@@ -386,6 +386,10 @@ test('the privacy page answers Do Not Track and says what Formspree receives', a
   await expect(prose).toContainText(
     "Everything sent to info@mdxplora.com, from the form or written to it directly, is forwarded by Cloudflare Email Routing to our mailbox in Google's Gmail.",
   );
+  // The page names who is responsible for that data, and how long messages are kept.
+  await expect(prose).toContainText('Adekunle Aina is responsible for the personal data this site collects');
+  await expect(prose).toContainText('You can reach him at info@mdxplora.com.');
+  await expect(prose).toContainText('We keep messages for one year after our last contact with you, then delete them.');
 });
 
 test('the privacy page names everything the site keeps in the browser', async ({ page }) => {
