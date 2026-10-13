@@ -324,7 +324,7 @@ test('structured data: the @id of a node that gives its own address is only its 
   expect(run.reported).toEqual(['/missing-id/']);
 });
 
-test('structured data: only a url, contentUrl or embedUrl is the own address of a node', () => {
+test('structured data: a contentUrl or embedUrl is the own address of a node, but not an image, logo, sameAs or thumbnailUrl', () => {
   const run = checkLinks({
     'index.html': html(
       '<h1 id="top">Home</h1>',
@@ -445,6 +445,63 @@ test('structured data: a urlTemplate is checked without the query and fragment i
   });
   expect(run.status, run.output).toBe(1);
   expect(run.reported).toEqual(['/missing-expanded{?q}', 'https://mdxplora.com/missing-search/?q={q}'].sort());
+});
+
+test('structured data: the WebSite SearchAction is read, as an EntryPoint urlTemplate and as a target', () => {
+  const search = (target: unknown) =>
+    jsonLd({
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      '@id': 'https://mdxplora.com/#website',
+      url: 'https://mdxplora.com/',
+      potentialAction: { '@type': 'SearchAction', target, 'query-input': 'required name=search_term_string' },
+    });
+  const entry = (urlTemplate: string) => ({
+    '@type': 'EntryPoint',
+    '@id': 'https://mdxplora.com/search-entry',
+    urlTemplate,
+  });
+  const run = checkLinks({
+    'search/index.html': html('<h1>Search</h1>'),
+    'index.html': html(
+      '<h1 id="top">Home</h1>',
+      search(entry('https://mdxplora.com/search/?q={search_term_string}')) +
+        search('https://mdxplora.com/search/?q={search_term_string}') +
+        search('https://mdxplora.com/nosearch?q={search_term_string}'),
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(['https://mdxplora.com/nosearch?q={search_term_string}']);
+});
+
+test('structured data: the urlTemplate of an EntryPoint is its own address, so its @id is only its name', () => {
+  const action = (type: string | string[], id: string, urlTemplate: string) => ({
+    '@type': 'SearchAction',
+    target: { '@type': type, '@id': id, urlTemplate },
+  });
+  const run = checkLinks({
+    'index.html': html(
+      '<h1 id="top">Home</h1>',
+      jsonLd({
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        url: '/',
+        potentialAction: [
+          action('EntryPoint', 'https://mdxplora.com/gone-path/', 'https://mdxplora.com/{lang}/search?q={q}'),
+          action('https://schema.org/EntryPoint', '/gone-https/', '/about/?q={q}'),
+          action('http://schema.org/EntryPoint', '/gone-http/', '/about/{?q}'),
+          action(['Thing', 'EntryPoint'], '/gone-types/', '?q={q}'),
+          action('EntryPoint', '/gone-off-site/', 'https://example.org/search?q={q}'),
+          // A blank urlTemplate, or one on a node of another type, is not its own address.
+          action('EntryPoint', '/missing-blank/', '  '),
+          action('SearchAction', '/missing-action/', '/about/?q={q}'),
+        ],
+        relatedLink: { '@id': '/missing-untyped/', urlTemplate: '/about/?q={q}' },
+      }),
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(['/missing-action/', '/missing-blank/', '/missing-untyped/']);
 });
 
 test('a link to /page#name without the trailing slash is checked against that page', () => {

@@ -111,11 +111,17 @@ const ADDRESS_KEYS = new Set([
 ]);
 const isAddressKey = (key) => Boolean(key) && (ADDRESS_KEYS.has(key) || key.endsWith('Url'));
 
-// Whether a node gives an address of its own, so that its @id is only its name. Only a url, contentUrl or embedUrl that
-// is a string, and not empty or blank, is the node's own address; others, such as its image, logo, sameAs or license,
-// are addresses of something else.
+// Whether a node gives an address of its own, so that its @id is only its name. A url, contentUrl or embedUrl that is a
+// string, and not empty or blank, is the node's own address, and so is such a urlTemplate on an EntryPoint: a node
+// whose @type is or includes EntryPoint, also written as https://schema.org/EntryPoint or http://schema.org/EntryPoint.
+// The urlTemplate is still checked as a template (see templateBase). Others, such as the node's image, logo, sameAs or
+// license, are addresses of something else, as is a urlTemplate on a node of any other type.
 const OWN_ADDRESS_KEYS = ['url', 'contentUrl', 'embedUrl'];
-const hasOwnAddress = (node) => OWN_ADDRESS_KEYS.some((k) => typeof node[k] === 'string' && node[k].trim() !== '');
+const ENTRY_POINT = new Set(['EntryPoint', 'https://schema.org/EntryPoint', 'http://schema.org/EntryPoint']);
+const isFilled = (value) => typeof value === 'string' && value.trim() !== '';
+const hasOwnAddress = (node) =>
+  OWN_ADDRESS_KEYS.some((k) => isFilled(node[k])) ||
+  ([node['@type']].flat().some((type) => ENTRY_POINT.has(type)) && isFilled(node.urlTemplate));
 
 // Each address as [written, checked]: these differ for a template with a placeholder, and for an @id with a fragment.
 function* addresses(value, key) {
