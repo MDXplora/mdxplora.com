@@ -609,20 +609,104 @@ test('the links in a noscript are read, as a browser with JavaScript off reads t
   const run = checkLinks({
     'index.html': html(
       '<h1 id="top">Home</h1><noscript><a href="/missing-in-noscript/">1</a><img src="/ok.png" alt=""></noscript>' +
-        '<noscript><p id="no-js">Text</p><a href="/#no-js">2</a></noscript><a href="#no-js">3</a>',
+        '<noscript><script type="application/ld+json">{"url": "/missing-data-in-noscript/"}</script></noscript>',
       '<noscript><link rel="stylesheet" href="/missing-noscript.css"></noscript>',
     ),
   });
   expect(run.status, run.output).toBe(1);
-  expect(run.reported).toEqual(['/missing-in-noscript/', '/missing-noscript.css'].sort());
+  expect(run.reported).toEqual(['/missing-in-noscript/', '/missing-noscript.css', '/missing-data-in-noscript/'].sort());
 });
 
 test('the content of a template is read', () => {
   const run = checkLinks({
-    'index.html': html('<h1 id="top">Home</h1><template><a href="/missing-in-template/">1</a></template>'),
+    'index.html': html(
+      '<h1 id="top">Home</h1><template><a href="/missing-in-template/">1</a>' +
+        '<script type="application/ld+json">{"url": "/missing-data-in-template/"}</script></template>',
+    ),
   });
   expect(run.status, run.output).toBe(1);
-  expect(run.reported).toEqual(['/missing-in-template/']);
+  expect(run.reported).toEqual(['/missing-in-template/', '/missing-data-in-template/'].sort());
+});
+
+// The reason given for a link to an id on or inside a template, and on or inside a noscript.
+const inTemplate = (link: string, id: string) =>
+  `${link} (the id "${id}" is only on or inside a template, which a link cannot reach)`;
+const inNoscript = (link: string, id: string) =>
+  `${link} (the id "${id}" is only on or inside a noscript, which a visitor sees only with JavaScript off)`;
+
+test('an id inside a template or a noscript counts for no link, since a visitor may not see it', () => {
+  const run = checkLinks({
+    'about/index.html': html('<h1 id="team">About</h1><noscript><p id="js-off">On</p></noscript>'),
+    'index.html': html(
+      '<h1 id="top">Home</h1><template><p id="row">Row</p><a href="#row">1</a></template>' +
+        '<noscript><p id="no-js">Off</p></noscript><a href="#no-js">2</a>' +
+        '<template><noscript><p id="tn">x</p></noscript></template>' +
+        '<noscript><template><p id="nt">x</p></template></noscript>' +
+        // The link never works in a browser: with JavaScript on there is no noscript, and with it off no template.
+        '<template><a href="#n">3</a><noscript><p id="n">x</p></noscript></template>' +
+        '<a href="/about/#js-off">4</a><a href="#tn">5</a><a href="#nt">6</a>',
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(
+    [
+      inTemplate('#row', 'row'),
+      inNoscript('#no-js', 'no-js'),
+      inTemplate('#n', 'n'),
+      inNoscript('/about/#js-off', 'js-off'),
+      inTemplate('#tn', 'tn'),
+      inTemplate('#nt', 'nt'),
+    ].sort(),
+  );
+});
+
+test('a link inside a noscript reaches an id inside a noscript, on this page or another, but not inside a template', () => {
+  const run = checkLinks({
+    'about/index.html': html('<h1 id="team">About</h1><noscript><p id="js-off">On</p></noscript>'),
+    'index.html': html(
+      '<h1 id="top">Home</h1><noscript><a href="#x">skip</a><p id="x">no js</p></noscript>' +
+        '<noscript><p id="y">y</p></noscript><noscript><div><a href="#y">1</a></div></noscript>' +
+        '<noscript><a href="/about/#js-off">2</a></noscript>' +
+        '<noscript><script type="application/ld+json">{"url": "https://mdxplora.com/about/#js-off"}</script></noscript>' +
+        // An id inside a template counts for no link, and nor does a link inside a template reach a noscript.
+        '<template><p id="t1">t</p></template><noscript><template><p id="t2">t</p></template></noscript>' +
+        '<template><noscript><p id="t3">t</p></noscript></template>' +
+        '<noscript><a href="#t1">3</a><a href="#t2">4</a><a href="#t3">5</a><template><a href="/#x">6</a></template>' +
+        '</noscript><template><a href="#n">7</a><noscript><p id="n">n</p></noscript></template>',
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(
+    [
+      inTemplate('#t1', 't1'),
+      inTemplate('#t2', 't2'),
+      inTemplate('#t3', 't3'),
+      inNoscript('/#x', 'x'),
+      inTemplate('#n', 'n'),
+    ].sort(),
+  );
+});
+
+test('the id of a template or a noscript counts as one inside it, and a link cannot reach into a shadow root', () => {
+  const run = checkLinks({
+    'about/index.html': html('<h1 id="team">About</h1><noscript id="ns"><p>On</p></noscript>'),
+    'index.html': html(
+      '<h1 id="top">Home</h1><template id="tp"><p>t</p></template><a href="#tp">1</a>' +
+        '<a href="/about/#ns">2</a><noscript><a href="/about/#ns">3</a></noscript>' +
+        // A browser shows this template as a shadow root of the div.
+        '<div><template id="sr" shadowrootmode="open"><p id="in-sr">s</p></template></div>' +
+        '<a href="#sr">4</a><a href="#in-sr">5</a>',
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(
+    [
+      inTemplate('#tp', 'tp'),
+      inNoscript('/about/#ns', 'ns'),
+      inTemplate('#sr', 'sr'),
+      inTemplate('#in-sr', 'in-sr'),
+    ].sort(),
+  );
 });
 
 test('a page whose parse ends inside a comment, a tag or the text of an element is reported', () => {

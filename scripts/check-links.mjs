@@ -11,7 +11,14 @@
 // type is application/ld+json, compared as a MIME type is: only the part before any ";", without the ASCII whitespace
 // around it, in any ASCII case. It is read as JSON.
 //
-// The content of a template is read too, though it is shown only once a script uses it.
+// The content of a template and of a noscript is read too, and its links are checked. But an id on a template or a
+// noscript, or on any element inside one, counts for no link. A link cannot reach a template or its content: a script
+// must first copy the content into the page. Where a template's shadowrootmode is open or closed, a browser shows its
+// content as a shadow root of the element around it, but a link cannot reach into a shadow root either; where it cannot
+// attach one, as on an a element, which cannot host one, or on an element that has a shadow root already, the template
+// stays a template. A noscript and its content are shown only with JavaScript off. So one exception: an id on or inside
+// a noscript counts for a link inside a noscript, on the same page or another, since with JavaScript off both are there.
+// This holds only when neither the link nor the id is inside a template.
 //
 // Not read: xlink:href, which svg once used for links.
 //
@@ -25,10 +32,8 @@
 //   too. A select inside a template is read the same way.
 // - In <svg><desc><b></desc></svg></b></desc><style>...</style>, parse5 reads the style as text and Chromium as svg, so
 //   a link in it is not checked. No parse error shows this, so it is not reported.
-// - A template whose shadowrootmode is open or closed is a shadow root in Chromium and a template in parse5. Its links
-//   are still checked, and an id in it counts, though a link to a part of a page cannot reach into a shadow root.
-// - In a table in a template, parse5 drops a form start tag, as the standard says, and Chromium keeps it, so a link to
-//   the form's id is reported.
+// - In a table in a template, parse5 drops a form start tag, as the standard says, and Chromium keeps it. An id inside
+//   a template counts for no link anyway, so this changes only the reason given for a link to the form's id.
 //
 // A page whose parse ends inside a comment, a tag, a CDATA section or the text of an element that holds only text, or
 // that has a plaintext element, is reported: what follows is then read as text, and on a built page that is a fault. So
@@ -194,13 +199,17 @@ const isStructuredData = (type) =>
     .replace(/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g, '')
     .replace(/[A-Z]/g, (c) => c.toLowerCase()) === 'application/ld+json';
 
-// What each page holds, read once: each link as [written, checked], its ids, and what is wrong with the page itself.
+// What each page holds, read once: each link as [written, checked, whether it is inside a noscript and not inside a
+// template], its ids, the ids a visitor may not see (see the header), and what is wrong with the page itself.
 const read = new Map();
 function readPage(file) {
   if (read.has(file)) return read.get(file);
   const source = readFileSync(file, 'utf8');
   const found = [];
   const ids = new Set();
+  // Ids on or inside a noscript and not inside a template, and ids on or inside a template.
+  const noscriptIds = new Set();
+  const templateIds = new Set();
   const problems = [];
   // The source of each select after its start tag, and the source of each comment, script and template, since a tag in
   // one of these is not a tag of the select around it.
@@ -209,17 +218,24 @@ function readPage(file) {
   const onParseError = ({ code }) => {
     if (Object.hasOwn(PARSE_ERRORS, code)) problems.push(PARSE_ERRORS[code]);
   };
-  const stack = [parse(source, { scriptingEnabled: false, sourceCodeLocationInfo: true, onParseError })];
+  // Each node, with whether it is inside a template, and whether inside a noscript.
+  const tree = parse(source, { scriptingEnabled: false, sourceCodeLocationInfo: true, onParseError });
+  const stack = [{ node: tree, inTemplate: false, inNoscript: false }];
   while (stack.length) {
-    const node = stack.pop();
+    const { node, inTemplate, inNoscript } = stack.pop();
+    const noscriptOnly = inNoscript && !inTemplate;
     const at = node.sourceCodeLocation;
     // The name of an HTML element; an svg or math element of the same name is another element.
     const html = node.namespaceURI === HTML ? node.tagName : undefined;
     if (node.tagName) {
       // An attribute in a namespace, such as xlink:href in svg, is left out.
       const attributes = new Map(node.attrs.filter((a) => !a.namespace).map((a) => [a.name, a.value]));
-      if (attributes.get('id')) ids.add(attributes.get('id'));
-      const add = (link) => found.push([link, link]);
+      const id = attributes.get('id');
+      // Whether the element is a template or inside one, and whether a noscript or inside one.
+      const onTemplate = inTemplate || html === 'template';
+      const onNoscript = inNoscript || html === 'noscript';
+      if (id) (onTemplate ? templateIds : onNoscript ? noscriptIds : ids).add(id);
+      const add = (link) => found.push([link, link, noscriptOnly]);
       for (const key of ['href', 'src']) if (attributes.has(key)) add(attributes.get(key));
       const content = attributes.get('content');
       if (content && /^https:\/\/mdxplora\.com(?:[/?#]|$)/.test(content)) add(content);
@@ -228,8 +244,8 @@ function readPage(file) {
       if (html === 'script' && isStructuredData(attributes.get('type'))) {
         try {
           // One at a time: spreading a long list into push overflows the stack.
-          for (const link of addresses(JSON.parse(node.childNodes.map((text) => text.value).join(''))))
-            found.push(link);
+          for (const [written, link] of addresses(JSON.parse(node.childNodes.map((text) => text.value).join(''))))
+            found.push([written, link, noscriptOnly]);
         } catch (error) {
           // Data nested too deep to follow overflows the stack, which is not bad JSON.
           problems.push(
@@ -244,8 +260,9 @@ function readPage(file) {
       if (at && (html === 'script' || html === 'template')) skipped.push([at.startOffset, at.endOffset]);
     } else if (at && node.nodeName === '#comment') skipped.push([at.startOffset, at.endOffset]);
     // The children are taken in order, then the content of a template.
-    if (node.content) stack.push(node.content);
-    for (const child of [...(node.childNodes ?? [])].reverse()) stack.push(child);
+    if (node.content) stack.push({ node: node.content, inTemplate: true, inNoscript });
+    const inside = { inTemplate, inNoscript: inNoscript || html === 'noscript' };
+    for (const child of [...(node.childNodes ?? [])].reverse()) stack.push({ node: child, ...inside });
   }
   // Inside a select, parse5 drops a start tag it does not keep, though Chromium keeps the element.
   for (const [from, to] of selects) {
@@ -260,7 +277,7 @@ function readPage(file) {
     if (tags.size)
       problems.push(`a select holds ${[...tags].join(', ')}, which is not supported here, so change the markup`);
   }
-  read.set(file, { found, ids, problems });
+  read.set(file, { found, ids, noscriptIds, templateIds, problems });
   return read.get(file);
 }
 
@@ -269,9 +286,11 @@ let checked = 0;
 for (const page of pages(DIST)) {
   const { found, problems } = readPage(page);
   for (const problem of problems) broken.push(`${relative(DIST, page)} → ${problem}`);
-  // Each link as written, and the address on this site it leads to.
-  const links = found.map(([written, link]) => [written, onSite(link)]).filter(([, href]) => href);
-  for (const [written, href] of links) {
+  // Each link as written, the address on this site it leads to, and whether it is inside a noscript.
+  const links = found
+    .map(([written, link, inNoscript]) => [written, onSite(link), inNoscript])
+    .filter(([, href]) => href);
+  for (const [written, href, inNoscript] of links) {
     checked++;
     // A template is checked without the query and fragment its first placeholder is in, or not at all (see
     // templateBase), so a "{" left in what is checked, or "%7B" as it is encoded, is a placeholder never filled.
@@ -291,8 +310,16 @@ for (const page of pages(DIST)) {
     const file = path ? target(path) : page;
     if (!existsSync(file)) {
       broken.push(`${relative(DIST, page)} → ${written}`);
-    } else if (id && file.endsWith('.html') && !readPage(file).ids.has(id)) {
-      broken.push(`${relative(DIST, page)} → ${written} (no element with id "${id}")`);
+    } else if (id && file.endsWith('.html')) {
+      const to = readPage(file);
+      // With JavaScript off, a link inside a noscript and an id inside a noscript are both there.
+      if (to.ids.has(id) || (inNoscript && to.noscriptIds.has(id))) continue;
+      let reason = `no element with id "${id}"`;
+      if (to.noscriptIds.has(id))
+        reason = `the id "${id}" is only on or inside a noscript, which a visitor sees only with JavaScript off`;
+      else if (to.templateIds.has(id))
+        reason = `the id "${id}" is only on or inside a template, which a link cannot reach`;
+      broken.push(`${relative(DIST, page)} → ${written} (${reason})`);
     }
   }
 }
