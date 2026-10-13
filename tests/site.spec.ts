@@ -1,7 +1,17 @@
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync } from 'node:fs';
+import {
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
 const pages = ['/', '/compute/', '/services/', '/early-access/', '/contact/', '/privacy/'];
 
@@ -232,9 +242,24 @@ test('the engine is named only where results must cite it, and nothing links to 
 
 // Until a legal entity is formed, MDXplora is the platform: no page, no part of a page's head, no form answer and no
 // file served beside the pages calls it a company or speaks of customers or commerce. The README and DEVELOPMENT.md
-// are read by visitors too, and the preview images are drawn from the cards' text.
+// are read by visitors too, and everything under src/, comments included, is published with the repository.
+//
+// The check is stricter than the rule: it refuses these words about anyone and in any sense, so "products" is refused
+// even as a chemist uses it ("reaction products", "a dot product"). Write around it.
 const commerceWords =
-  /\b(compan(?:y|ies)|customers?|commerc\w*|corporat\w*|incorporated|LLC|Ltd|Inc\b|enterprises?|business\w*|engagements?|products?)\b/i;
+  /\b(compan(?:y|ies)|customers?|commerc\w*|corp|corporat\w*|incorporated|LLC|Ltd|enterprises?|business\w*|engagements?|products?|marketing)\b/gi;
+// "Co." and "Inc" (with or without its dot) are company forms only with a capital, or all in capitals, and outside an
+// address, so they are matched with case, and not after a dot, @, / or a letter: "Acme Inc", "ACME INC." and
+// "Smith & Co." are found, while example.co.uk, t.co and o'neil&co@example.org are not. Older engines have no inline
+// case flag, so this is a second pattern.
+const companyForms = /(?<![.@/\p{L}])(?:Co\.|CO\.|Inc\b|INC\b)/gu;
+
+// Each word found, with a little of the text around it.
+function commerceFound(text: string): string[] {
+  return [commerceWords, companyForms].flatMap((pattern) =>
+    [...text.matchAll(pattern)].map((m) => text.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40)),
+  );
+}
 
 test('the check for commercial words finds them, and only them', () => {
   for (const words of [
@@ -247,22 +272,96 @@ test('the check for commercial words finds them, and only them', () => {
     'Example Labs LLC',
     'Example Ltd',
     'Acme Inc.',
+    'Acme Inc',
+    'ACME INC.',
+    'ACME INC',
+    'Acme Corp',
+    'Acme Corp.',
+    'Smith & Co.',
+    'Smith &Co.',
+    'SMITH & CO.',
     'Product',
+    'reaction products',
     'How an engagement works',
+    'Marketing',
   ])
-    expect(words).toMatch(commerceWords);
-  for (const words of ['companion', 'accompany', 'production', 'the platform', 'In industry', 'include', 'incoming'])
-    expect(words).not.toMatch(commerceWords);
+    expect(commerceFound(words), words).not.toEqual([]);
+  for (const words of [
+    'companion',
+    'accompany',
+    'corpus',
+    'production',
+    'the platform',
+    'In industry',
+    'include',
+    'Include',
+    'incoming',
+    'Incoming',
+    'INCLUDE',
+    'INCOMING',
+    'inc',
+    'co-authored',
+    'Co-authored',
+    'example.co.uk',
+    'https://t.co/x',
+    'example.Co.uk',
+    'EXAMPLE.CO.UK',
+    'HTTPS://T.CO/X',
+    'O’NEIL&CO@EXAMPLE.ORG',
+    'MAIL@CO.EXAMPLE',
+    '/INC/',
+    'TACO.',
+    'o’neil&co@example.org',
+    "o'neil&co@example.org",
+    'mail@Co.example',
+    '/Inc/',
+    'market',
+  ])
+    expect(commerceFound(words), words).toEqual([]);
 });
 
-// Each word found, with a little of the text around it.
-function commerceFound(text: string): string[] {
-  const every = new RegExp(commerceWords.source, 'gi');
-  return [...text.matchAll(every)].map((m) => text.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40));
+// Every page the sitemap lists, so a new page is read too. Each page this file tests is among them.
+async function sitemapPages(request: APIRequestContext): Promise<string[]> {
+  const locations = async (path: string) =>
+    [...(await (await request.get(path)).text()).matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname);
+  const listed = (await Promise.all((await locations('/sitemap-index.xml')).map(locations))).flat();
+  for (const path of pages) expect(listed, 'pages in the sitemap').toContain(path);
+  return listed;
 }
 
+// The text files under a folder, known by their extension, so an image or a font is not read as text. A link is not
+// followed, and only regular files are read.
+const TEXT_FILE = /\.(?:astro|ts|js|mjs|css|md|mdx|json|svg|html|txt)$/i;
+function textFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) return textFiles(path);
+    return entry.isFile() && TEXT_FILE.test(entry.name) ? [path] : [];
+  });
+}
+
+test('the word test reads the text files under a folder, and not images, fonts, links or folders', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'text-files-'));
+  try {
+    mkdirSync(join(dir, 'assets'));
+    mkdirSync(join(dir, 'notes.md'));
+    writeFileSync(join(dir, 'page.astro'), 'text');
+    writeFileSync(join(dir, 'assets', 'logo.svg'), '<svg/>');
+    writeFileSync(join(dir, 'assets', 'photo.png'), 'Adobe Inc.');
+    writeFileSync(join(dir, 'assets', 'font.woff2'), 'lTd');
+    writeFileSync(join(dir, 'notes.md', 'plan.MD'), 'text');
+    symlinkSync(join(dir, 'page.astro'), join(dir, 'link.ts'));
+    symlinkSync(join(dir, 'assets'), join(dir, 'linked'));
+    expect(textFiles(dir).sort()).toEqual(
+      [join(dir, 'assets', 'logo.svg'), join(dir, 'notes.md', 'plan.MD'), join(dir, 'page.astro')].sort(),
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('nothing calls MDXplora a company or speaks of customers', async ({ page, request }) => {
-  for (const path of ['/', '/compute/', '/services/', '/early-access/', '/contact/', '/privacy/', '/no-such-page/']) {
+  for (const path of [...(await sitemapPages(request)), '/no-such-page/']) {
     await page.goto(path);
     expect(commerceFound(await page.content()), path).toEqual([]);
   }
@@ -271,7 +370,10 @@ test('nothing calls MDXplora a company or speaks of customers', async ({ page, r
     expect(response.ok(), path).toBe(true);
     expect(commerceFound(await response.text()), path).toEqual([]);
   }
-  for (const file of ['README.md', 'DEVELOPMENT.md', 'src/data/cards.ts'])
+  const source = textFiles('src');
+  expect(source).toContain(join('src', 'data', 'cards.ts'));
+  expect(source.length, 'text files read under src/').toBeGreaterThanOrEqual(28);
+  for (const file of ['README.md', 'DEVELOPMENT.md', ...source])
     expect(commerceFound(readFileSync(file, 'utf8')), file).toEqual([]);
 });
 
