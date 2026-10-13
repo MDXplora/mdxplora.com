@@ -95,6 +95,10 @@ CI passes. The workflows pin each action to a commit, with its version beside it
 CI runs through `npx` at the version pinned in `package.json`, outside the lockfile, and is updated by hand; it runs after
 the site is packed for Pages and without the banned-terms list, so it cannot change what is published or read the list.
 
+parse5 is pinned exactly, since the link check's notes on where it and Chromium differ, in the header of
+`scripts/check-links.mjs`, are tied to its version. Dependabot keeps it out of the weekly group, so each parse5 update
+comes in a pull request of its own; check those notes again before merging it.
+
 The workflows run on `ubuntu-24.04` by name rather than `ubuntu-latest`, which GitHub moves to a new Ubuntu from
 time to time; Playwright's browsers need their system libraries there. Move it on by hand once Playwright supports the
 newer one.

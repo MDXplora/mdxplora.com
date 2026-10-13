@@ -1,6 +1,7 @@
 # Weekly dependency updates. Minor and patch updates arrive together in one pull
-# request per ecosystem; a major update gets its own. New releases wait a week
-# before they are proposed, so a bad release is usually withdrawn first.
+# request per ecosystem; a major update gets its own, and so does any parse5
+# update. New releases wait a week before they are proposed, so a bad release is
+# usually withdrawn first.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -13,6 +14,8 @@ updates:
     groups:
       npm:
         patterns: ['*']
+        # The link check's notes on parse5 are tied to its version (see DEVELOPMENT.md).
+        exclude-patterns: ['parse5']
         update-types: [minor, patch]
     ignore:
       # Kept at 0.7.5 by an override: satori cannot read fonts with 0.8, so every preview image shows boxes.
