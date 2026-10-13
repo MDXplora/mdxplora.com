@@ -1,14 +1,5 @@
 import { createHash } from 'node:crypto';
-import {
-  lstatSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
@@ -245,14 +236,15 @@ test('the engine is named only where results must cite it, and nothing links to 
 // are read by visitors too, and everything under src/, comments included, is published with the repository.
 //
 // The check is stricter than the rule: it refuses these words about anyone and in any sense, so "products" is refused
-// even as a chemist uses it ("reaction products", "a dot product"). Write around it.
+// even as a chemist uses it ("reaction products", "a dot product"), and so is "CO." for carbon monoxide ("bound CO.").
+// Write around it.
 const commerceWords =
   /\b(compan(?:y|ies)|customers?|commerc\w*|corp|corporat\w*|incorporated|LLC|Ltd|enterprises?|business\w*|engagements?|products?|marketing)\b/gi;
 // "Co." and "Inc" (with or without its dot) are company forms only with a capital, or all in capitals, and outside an
-// address, so they are matched with case, and not after a dot, @, / or a letter: "Acme Inc", "ACME INC." and
-// "Smith & Co." are found, while example.co.uk, t.co and o'neil&co@example.org are not. Older engines have no inline
-// case flag, so this is a second pattern.
-const companyForms = /(?<![.@/\p{L}])(?:Co\.|CO\.|Inc\b|INC\b)/gu;
+// address, so they are matched with case, and not after a dot, @, /, hyphen, letter or digit: "Acme Inc", "ACME INC."
+// and "Smith & Co." are found, while example.co.uk, t.co, acme-inc.com and o'neil&co@example.org are not. Older engines
+// have no inline case flag, so this is a second pattern.
+const companyForms = /(?<![.@/\-\p{L}\p{N}])(?:Co\.|CO\.|Inc\b|INC\b)/gu;
 
 // Each word found, with a little of the text around it.
 function commerceFound(text: string): string[] {
@@ -280,6 +272,7 @@ test('the check for commercial words finds them, and only them', () => {
     'Smith & Co.',
     'Smith &Co.',
     'SMITH & CO.',
+    'bound CO.',
     'Product',
     'reaction products',
     'How an engagement works',
@@ -311,6 +304,10 @@ test('the check for commercial words finds them, and only them', () => {
     'MAIL@CO.EXAMPLE',
     '/INC/',
     'TACO.',
+    'HTTPS://ACME-INC.COM',
+    'https://acme-Inc.example',
+    'X2CO.',
+    'R2Inc',
     'o’neil&co@example.org',
     "o'neil&co@example.org",
     'mail@Co.example',
@@ -362,7 +359,8 @@ test('the word test reads the text files under a folder, and not images, fonts, 
 
 test('nothing calls MDXplora a company or speaks of customers', async ({ page, request }) => {
   for (const path of [...(await sitemapPages(request)), '/no-such-page/']) {
-    await page.goto(path);
+    const response = await page.goto(path);
+    expect(response?.status(), path).toBe(path === '/no-such-page/' ? 404 : 200);
     expect(commerceFound(await page.content()), path).toEqual([]);
   }
   for (const path of ['/.well-known/security.txt', '/manifest.webmanifest', '/robots.txt']) {
