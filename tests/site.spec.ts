@@ -107,8 +107,10 @@ test('each page has its own link preview image, matching its headline', async ({
     await page.goto(path);
     const image = await page.locator('meta[property="og:image"]').getAttribute('content');
     const alt = await page.locator('meta[property="og:image:alt"]').getAttribute('content');
+    const twitterAlt = await page.locator('meta[name="twitter:image:alt"]').getAttribute('content');
     const headline = (await page.locator('h1').first().innerText()).replace(/\s+/g, ' ').trim();
-    expect(alt, path).toContain(headline);
+    expect(alt, path).toBe(`MDXplora: ${headline}`);
+    expect(twitterAlt, path).toBe(alt);
 
     // The image is addressed on the live domain; fetch the same path from this build.
     const response = await request.get(new URL(image!).pathname);
@@ -421,15 +423,18 @@ test('the setting an earlier version stored for its animation is deleted, and th
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 });
 
-// Headings say plainly what their section holds: in sentence case, as one phrase, with no full stop. After the first
-// word, only names and the software's own terms take a capital.
+// Headings say plainly what their section holds: in sentence case, as one phrase, with no full stop or colon. After
+// the first word, only names and the software's own terms take a capital. The pipeline's phases on the home page are
+// named as the software names them, in lower case.
 const headingNames = new Set(['MDXplora', 'FastMDXplora', 'Config', 'Configs', 'Manifest', 'MD', 'GPU', 'GPUs']);
 const headingPhrases = ['Do Not Track'];
+const headingPhases = new Set(['setup', 'simulation', 'analysis', 'report']);
 
 function headingFaults(heading: string): string[] {
   const faults: string[] = [];
-  if (/[.!?]$/.test(heading)) faults.push('ends in punctuation');
-  if (/[.!?] \p{Lu}/u.test(heading)) faults.push('more than one sentence');
+  if (/^\p{Ll}/u.test(heading) && !headingPhases.has(heading)) faults.push('starts in lower case');
+  if (/[.!?:]$/.test(heading)) faults.push('ends in punctuation');
+  if (/[.!?]\s+\p{L}/u.test(heading)) faults.push('more than one sentence');
   const words = headingPhrases
     .reduce((text, phrase) => text.replaceAll(phrase, ''), heading)
     .split(/\s+/)
@@ -440,9 +445,24 @@ function headingFaults(heading: string): string[] {
 }
 
 test('the heading check finds title case and punctuation', () => {
-  for (const heading of ['Where Studies Will Run', 'Prefer email?', 'Before you ask.', 'A Config goes in. A Manifest'])
+  for (const heading of [
+    'Where Studies Will Run',
+    'Prefer email?',
+    'Before you ask.',
+    'A Config goes in. A Manifest',
+    'how a study runs',
+    'Questions:',
+    'How a study runs. one file in',
+    'setup and simulation',
+  ])
     expect(headingFaults(heading), heading).not.toEqual([]);
-  for (const heading of ['Where studies will run', 'Agree the Config', 'What MDXplora refuses', 'Do Not Track'])
+  for (const heading of [
+    'Where studies will run',
+    'Agree the Config',
+    'What MDXplora refuses',
+    'Do Not Track',
+    'setup',
+  ])
     expect(headingFaults(heading), heading).toEqual([]);
 });
 

@@ -116,7 +116,9 @@ test('no page draws a gradient, a glow or a shadow behind its text', async ({ pa
             style.boxShadow !== 'none' && 'shadow',
             style.backdropFilter !== 'none' && 'backdrop filter',
           ].filter(Boolean);
-          return what.length ? [`${el.tagName.toLowerCase()}.${el.className}: ${what.join(', ')}`] : [];
+          return what.length
+            ? [`${el.tagName.toLowerCase()}.${el.getAttribute('class') ?? ''}: ${what.join(', ')}`]
+            : [];
         }),
       );
       expect(found, `${path} in ${theme}`).toEqual([]);
@@ -171,12 +173,31 @@ test('status colours appear only where they say something', async ({ page }) => 
         const chosen = root.dataset.theme;
         const probe = document.createElement('span');
         document.body.append(probe);
+        // Each colour is drawn opaque to read its red, green and blue, so a status colour is found at any alpha and in
+        // any notation: rgba(), or the color(), oklab() or oklch() that a color-mix() computes to. Fully transparent
+        // colours are skipped.
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 1;
+        const context = canvas.getContext('2d', { willReadFrequently: true })!;
+        const pixel = (fill: string) => {
+          context.clearRect(0, 0, 1, 1);
+          context.fillStyle = 'transparent';
+          context.fillStyle = fill;
+          context.fillRect(0, 0, 1, 1);
+          return context.getImageData(0, 0, 1, 1).data;
+        };
+        const channels = new Map<string, string | null>();
+        const rgb = (colour: string) => {
+          if (!channels.has(colour))
+            channels.set(colour, pixel(colour)[3] ? pixel(`rgb(from ${colour} r g b / 1)`).slice(0, 3).join() : null);
+          return channels.get(colour)!;
+        };
         const status = new Map<string, string>();
         for (const theme of ['dark', 'light']) {
           root.dataset.theme = theme;
           for (const name of Object.keys(statusElements)) {
             probe.style.color = `var(${name})`;
-            status.set(getComputedStyle(probe).color, name);
+            status.set(rgb(getComputedStyle(probe).color), name);
           }
         }
         root.dataset.theme = chosen;
@@ -193,14 +214,14 @@ test('status colours appear only where they say something', async ({ page }) => 
                 .filter((side) => parseFloat(style[`border${side}Width`]) > 0)
                 .map((side) => style[`border${side}Color`]),
               ...(style.outlineStyle !== 'none' ? [style.outlineColor] : []),
-              ...(style.boxShadow.match(/rgba?\([^)]*\)/g) ?? []),
+              ...(style.boxShadow.match(/(?:rgba?|color|oklab|oklch|lab|lch)\([^()]*\)/g) ?? []),
               ...(el instanceof SVGElement ? [style.fill, style.stroke] : []),
               ...(style.textDecorationLine !== 'none' ? [style.textDecorationColor] : []),
             ];
             for (const colour of used) {
-              const name = status.get(colour);
+              const name = status.get(rgb(colour) ?? '');
               if (name && !statusElements[name].some((selector) => el.matches(selector)))
-                out.push(`${el.tagName.toLowerCase()}.${el.className}${pseudo ?? ''}: ${name}`);
+                out.push(`${el.tagName.toLowerCase()}.${el.getAttribute('class') ?? ''}${pseudo ?? ''}: ${name}`);
             }
           }
         }
@@ -383,7 +404,9 @@ test('no heading has a label in capitals or spaced letters above it', async ({ p
           if (!/\p{L}/u.test(text)) continue;
           const spaced = parseFloat(style.letterSpacing) > 0.02 * parseFloat(style.fontSize);
           if (style.textTransform === 'uppercase' || style.fontVariantCaps !== 'normal' || spaced)
-            out.push(`${el.tagName.toLowerCase()}.${el.className}${pseudo ?? ''}: ${text.trim().slice(0, 40)}`);
+            out.push(
+              `${el.tagName.toLowerCase()}.${el.getAttribute('class') ?? ''}${pseudo ?? ''}: ${text.trim().slice(0, 40)}`,
+            );
         }
       }
       // Capitals typed as such: the line just above a heading is not a short label in capitals.
