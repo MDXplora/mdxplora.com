@@ -17,8 +17,12 @@ export const colours = {
 /**
  * A droplet: seven atoms in the close-packed arrangement a Lennard-Jones
  * liquid forms, one at the centre and six around it, on a 32 x 32 grid.
+ * Drawn at 32 px or less, the gaps between the atoms would be under a pixel
+ * and the atoms would merge, so there they keep their places and are drawn
+ * at `smallRadius`.
  */
 export const mark = {
+  smallRadius: 2.7,
   atoms: [
     { cx: 16, cy: 16, r: 3.2 },
     ...Array.from({ length: 6 }, (_, k) => {
@@ -35,16 +39,19 @@ export const mark = {
  * corners `radius` rounds (0 for icons the platform rounds itself), and
  * `scale` shrinks the atoms towards the centre, for icons whose edges may be
  * cropped. Without it (beside the word mark), the atoms alone, in `fill`,
- * on nothing.
+ * on nothing. `small` draws the atoms for a mark shown at 32 px or less.
  */
 export function markElements({
   tile = true,
   fill = colours.blue as string,
   radius = 6,
   scale = 1,
-}: { tile?: boolean; fill?: string; radius?: number; scale?: number } = {}): string {
+  small = false,
+}: { tile?: boolean; fill?: string; radius?: number; scale?: number; small?: boolean } = {}): string {
   const inner = mark.atoms
-    .map((a) => `<circle cx="${a.cx}" cy="${a.cy}" r="${a.r}" fill="${tile ? '#fff' : fill}"/>`)
+    .map(
+      (a) => `<circle cx="${a.cx}" cy="${a.cy}" r="${small ? mark.smallRadius : a.r}" fill="${tile ? '#fff' : fill}"/>`,
+    )
     .join('');
   const shrink =
     scale === 1 ? inner : `<g transform="translate(16 16) scale(${scale}) translate(-16 -16)">${inner}</g>`;

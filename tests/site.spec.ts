@@ -648,6 +648,40 @@ test('the browser icon is the current mark, at an address that changes with it',
   expect(svg).not.toMatch(/gradient/i);
 });
 
+// The smallest gap between two atoms of the droplet, in pixels when its 32-unit grid is drawn `size` pixels wide.
+function atomGap(circles: { cx: number; cy: number; r: number }[], size: number): number {
+  let gap = Infinity;
+  for (const [i, a] of circles.entries())
+    for (const b of circles.slice(i + 1)) gap = Math.min(gap, Math.hypot(a.cx - b.cx, a.cy - b.cy) - a.r - b.r);
+  return (gap * size) / 32;
+}
+const circlesIn = (svg: string) =>
+  [...svg.matchAll(/<circle cx="([\d.]+)" cy="([\d.]+)" r="([\d.]+)"/g)].map(([, cx, cy, r]) => ({
+    cx: +cx,
+    cy: +cy,
+    r: +r,
+  }));
+
+test('the droplet reads as seven atoms in the header, the footer and the browser tab', async ({ page, request }) => {
+  await page.goto('/');
+  for (const where of ['.site-header .logo svg', '.site-footer .logo svg']) {
+    const [size, svg] = await page
+      .locator(where)
+      .evaluate((el) => [el.getBoundingClientRect().width, el.innerHTML] as const);
+    const circles = circlesIn(svg);
+    expect(circles, where).toHaveLength(7);
+    expect(atomGap(circles, size), `${where}: pixels between atoms`).toBeGreaterThanOrEqual(1.25);
+  }
+  // In a tab the icon is 16 px wide; the gaps stay a pixel there.
+  const href = await page.locator('link[rel="icon"][type="image/svg+xml"]').getAttribute('href');
+  const icon = circlesIn(await (await request.get(href!)).text());
+  expect(icon).toHaveLength(7);
+  expect(atomGap(icon, 16), 'pixels between atoms at 16 px').toBeGreaterThanOrEqual(0.95);
+  // Both browser icons are addressed with the same fingerprint.
+  const ico = await page.locator('link[rel="icon"][sizes="32x32"]').getAttribute('href');
+  expect(new URL(ico!, page.url()).search).toBe(new URL(href!, page.url()).search);
+});
+
 test("the browser's own colour follows the theme", async ({ page }) => {
   await page.goto('/');
   const colour = () => page.locator('meta[name="theme-color"]').getAttribute('content');

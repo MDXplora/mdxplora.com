@@ -15,7 +15,7 @@ const { size = 24, wordmark = true } = Astro.props;
     viewBox="0 0 32 32"
     aria-hidden="true"
     focusable="false"
-    set:html={markElements({ tile: false, fill: 'currentColor' })}
+    set:html={markElements({ tile: false, fill: 'currentColor', small: size <= 32 })}
   />
   {wordmark && <span class="wordmark">MDXplora</span>}
 </span>

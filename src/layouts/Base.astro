@@ -1,4 +1,5 @@
 ---
+import { createHash } from 'node:crypto';
 import '@fontsource-variable/inter';
 import interLatin from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
 import '@fontsource-variable/jetbrains-mono';
@@ -8,7 +9,7 @@ import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import { cardFor } from '../data/cards';
 import { site } from '../data/site';
-import { iconVersion } from '../lib/icons';
+import { iconVersion, markSvg } from '../lib/icons';
 import { counterScript, hashOf, themeScript } from '../lib/inline-scripts';
 
 interface Props {
@@ -24,6 +25,12 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 const card = cardFor(Astro.url.pathname);
 const image = new URL(`/og/${card.slug}.png`, Astro.site);
 const imageAlt = `${site.name}: ${card.title}`;
+
+// The browser icons are drawn with the small mark's atoms, so their address changes with that too.
+const faviconVersion = createHash('sha256')
+  .update(iconVersion + markSvg({ small: true }))
+  .digest('hex')
+  .slice(0, 8);
 
 // Inline scripts run only if the security policy lists their hash (see astro.config.mjs).
 Astro.csp?.insertScriptHash(hashOf(themeScript));
@@ -56,8 +63,8 @@ if (analytics) {
     {addressed && <link rel="canonical" href={canonical} />}
     <!-- Fetched with the page, so text does not reflow when it arrives. -->
     <link rel="preload" href={interLatin} as="font" type="font/woff2" crossorigin />
-    <link rel="icon" href={`/favicon.ico?v=${iconVersion}`} sizes="32x32" />
-    <link rel="icon" href={`/favicon.svg?v=${iconVersion}`} type="image/svg+xml" />
+    <link rel="icon" href={`/favicon.ico?v=${faviconVersion}`} sizes="32x32" />
+    <link rel="icon" href={`/favicon.svg?v=${faviconVersion}`} type="image/svg+xml" />
     <link rel="apple-touch-icon" href={`/apple-touch-icon.png?v=${iconVersion}`} />
     <link rel="manifest" href={`/manifest.webmanifest?v=${iconVersion}`} />
     <link rel="sitemap" href="/sitemap-index.xml" />
