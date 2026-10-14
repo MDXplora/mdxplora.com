@@ -16,7 +16,7 @@ export const cards = [
   },
   {
     slug: 'services',
-    title: 'Molecular dynamics, run with you or for you',
+    title: 'Molecular dynamics services',
     text: 'Studies run for you, training for your group, and support.',
   },
   {
