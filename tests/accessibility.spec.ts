@@ -190,3 +190,125 @@ test.describe('without JavaScript, at the narrowest width', () => {
     });
   }
 });
+
+// The look, held in place: one blue accent, filled into the main button and marking the current page, square-ish
+// controls, and no labels in spaced capitals.
+const hue = ([r, g, b]: number[]) => {
+  const max = Math.max(r, g, b);
+  const span = max - Math.min(r, g, b);
+  if (span === 0) return NaN;
+  const h = max === r ? (g - b) / span : max === g ? (b - r) / span + 2 : (r - g) / span + 4;
+  return (h * 60 + 360) % 360;
+};
+
+for (const theme of ['dark', 'light']) {
+  test(`in the ${theme} theme, the accent is blue and fills the main buttons`, async ({ page }) => {
+    await page.addInitScript((value) => localStorage.setItem('mdxplora-theme', value), theme);
+    for (const path of ['/', '/contact/', '/no-such-page/']) {
+      await page.goto(path);
+      const token = await resolved(page, ['--accent', '--link']);
+      expect(hue(token['--accent']), `${path}: the accent's hue`).toBeGreaterThanOrEqual(205);
+      expect(hue(token['--accent']), `${path}: the accent's hue`).toBeLessThanOrEqual(225);
+      expect(token['--link'], 'links are in the accent').toEqual(token['--accent']);
+      const fills = await page
+        .locator('.button-primary')
+        .evaluateAll((buttons) => buttons.map((b) => getComputedStyle(b).backgroundColor));
+      expect(fills.length, path).toBeGreaterThan(0);
+      for (const fill of fills) expect(colours(fill)[0], `${path}: a main button`).toEqual(token['--accent']);
+    }
+  });
+
+  test(`in the ${theme} theme, the current page is marked in the link colour, in the bar and the phone menu`, async ({
+    page,
+    isMobile,
+  }) => {
+    await page.addInitScript((value) => localStorage.setItem('mdxplora-theme', value), theme);
+    await page.goto('/compute/');
+    const token = await resolved(page, ['--link']);
+    if (isMobile) await page.locator('.menu-toggle').click();
+    const shown = isMobile ? '#mobile-menu nav' : '.site-header .links';
+    const current = page.locator(`${shown} a[aria-current="page"]`);
+    await expect(current).toHaveCount(1);
+    await expect(current).toBeVisible();
+    await expect(current).toHaveText('Compute');
+    // Both navigations, the one on screen and the other, mark the same page in the same colour.
+    for (const nav of ['.site-header .links', '#mobile-menu nav']) {
+      const colour = await page.locator(`${nav} a[aria-current="page"]`).evaluate((a) => getComputedStyle(a).color);
+      expect(colours(colour)[0], `${nav}: the current page`).toEqual(token['--link']);
+    }
+  });
+}
+
+test('the phone menu says which page is open', async ({ page }) => {
+  for (const [path, label] of [
+    ['/compute/', 'Compute'],
+    ['/services/', 'Services'],
+    ['/contact/', 'Contact'],
+  ]) {
+    await page.goto(path);
+    const current = page.locator('#mobile-menu a[aria-current="page"]');
+    await expect(current, path).toHaveCount(1);
+    await expect(current, path).toHaveText(label);
+  }
+  await page.goto('/privacy/');
+  await expect(page.locator('#mobile-menu a[aria-current]')).toHaveCount(0);
+});
+
+test('every button has the controls’ corners', async ({ page }) => {
+  for (const path of ['/', '/contact/', '/no-such-page/']) {
+    await page.goto(path);
+    const found = await page.evaluate(() => {
+      const probe = document.createElement('span');
+      probe.style.borderRadius = 'var(--radius-s)';
+      document.body.append(probe);
+      const control = getComputedStyle(probe).borderTopLeftRadius;
+      probe.remove();
+      return [...document.querySelectorAll('.button, button')].flatMap((el) => {
+        const own = getComputedStyle(el);
+        const corners = [
+          own.borderTopLeftRadius,
+          own.borderTopRightRadius,
+          own.borderBottomRightRadius,
+          own.borderBottomLeftRadius,
+        ];
+        return corners.every((corner) => corner === control) ? [] : [`${el.className}: ${corners.join(' ')}`];
+      });
+    });
+    expect(found, path).toEqual([]);
+  }
+});
+
+test('no heading has a label in capitals or spaced letters above it', async ({ page }) => {
+  for (const path of pages) {
+    await page.goto(path);
+    const found = await page.evaluate(() => {
+      const out: string[] = [];
+      // Text drawn in capitals, small capitals or with letters spaced out, by an element or by its ::before or ::after.
+      for (const el of document.querySelectorAll('body *')) {
+        for (const pseudo of [null, '::before', '::after']) {
+          const style = getComputedStyle(el, pseudo);
+          const text = pseudo
+            ? /^".*"$/.test(style.content)
+              ? style.content.slice(1, -1)
+              : ''
+            : [...el.childNodes]
+                .filter((node) => node.nodeType === Node.TEXT_NODE)
+                .map((node) => node.textContent)
+                .join('');
+          if (!/\p{L}/u.test(text)) continue;
+          const spaced = parseFloat(style.letterSpacing) > 0.02 * parseFloat(style.fontSize);
+          if (style.textTransform === 'uppercase' || style.fontVariantCaps !== 'normal' || spaced)
+            out.push(`${el.tagName.toLowerCase()}.${el.className}${pseudo ?? ''}: ${text.trim().slice(0, 40)}`);
+        }
+      }
+      // Capitals typed as such: the line just above a heading is not a short label in capitals.
+      for (const heading of document.querySelectorAll('h1, h2')) {
+        const above = heading.previousElementSibling?.textContent?.trim() ?? '';
+        if (above.length <= 40 && /\p{Lu}{2}/u.test(above) && above === above.toUpperCase())
+          out.push(`above "${heading.textContent?.trim()}": ${above}`);
+      }
+      return out;
+    });
+    expect(found, path).toEqual([]);
+  }
+});
