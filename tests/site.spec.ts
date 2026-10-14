@@ -378,6 +378,35 @@ test('nothing calls MDXplora a company or speaks of customers', async ({ page, r
     expect(commerceFound(readFileSync(file, 'utf8')), file).toEqual([]);
 });
 
+// The site speaks as "the MDXplora team". Its operator is named on the privacy page only, as the data controller.
+const operatorName = /(?<![\p{L}\p{N}])(?:adekunle|aina)(?![\p{L}\p{N}])/iu;
+
+test('the check for the operator finds his name in any case, and only as a word', () => {
+  for (const text of ['Adekunle Aina', 'ADEKUNLE', 'aina', 'Dr Aina.', 'Adekunle’s'])
+    expect(operatorName.test(text), text).toBe(true);
+  for (const text of ['Ainara', 'containable', 'MDXplora team', 'Adekunles'])
+    expect(operatorName.test(text), text).toBe(false);
+});
+
+test('the operator is named on the privacy page, and nowhere else', async ({ request }) => {
+  for (const path of [...(await sitemapPages(request)), '/no-such-page/']) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(path === '/no-such-page/' ? 404 : 200);
+    const html = await response.text();
+    const [head, body] = html.split(/<\/head>/i);
+    expect(body, `${path} has a head and a body`).toBeDefined();
+    // The head holds the metadata, the structured data and the link preview image's alt text.
+    expect(head.match(operatorName)?.[0], `${path}: metadata`).toBeUndefined();
+    if (path === '/privacy/') expect(body, path).toContain('Adekunle Aina is responsible for the personal data');
+    else expect(body.match(operatorName)?.[0], path).toBeUndefined();
+  }
+  for (const path of ['/.well-known/security.txt', '/manifest.webmanifest', '/robots.txt']) {
+    const response = await request.get(path);
+    expect(response.ok(), path).toBe(true);
+    expect((await response.text()).match(operatorName)?.[0], path).toBeUndefined();
+  }
+});
+
 test('the privacy page answers Do Not Track and says what Formspree receives', async ({ page }) => {
   await page.goto('/privacy/');
   const prose = page.locator('.prose');
@@ -424,17 +453,18 @@ test('the setting an earlier version stored for its animation is deleted, and th
 });
 
 // Headings say plainly what their section holds: in sentence case, as one phrase, with no full stop or colon. After
-// the first word, only names and the software's own terms take a capital. The pipeline's phases on the home page are
-// named as the software names them, in lower case.
+// the first word, only names and the software's own terms take a capital. A heading that opens with code, such as
+// the pipeline's phases on the home page, gives the name as the software spells it, so it may start in lower case.
+// A short abbreviation followed by a word does not end a sentence.
 const headingNames = new Set(['MDXplora', 'FastMDXplora', 'Config', 'Configs', 'Manifest', 'MD', 'GPU', 'GPUs']);
 const headingPhrases = ['Do Not Track'];
-const headingPhases = new Set(['setup', 'simulation', 'analysis', 'report']);
+const headingAbbreviations = /(?<![\p{L}\p{N}.])(?:vs|e\.g|i\.e|cf|approx)\.(?=\s+\p{L})/giu;
 
-function headingFaults(heading: string): string[] {
+function headingFaults(heading: string, opensWithCode = false): string[] {
   const faults: string[] = [];
-  if (/^\p{Ll}/u.test(heading) && !headingPhases.has(heading)) faults.push('starts in lower case');
+  if (/^\p{Ll}/u.test(heading) && !opensWithCode) faults.push('starts in lower case');
   if (/[.!?:]$/.test(heading)) faults.push('ends in punctuation');
-  if (/[.!?]\s+\p{L}/u.test(heading)) faults.push('more than one sentence');
+  if (/[.!?]\s+\p{L}/u.test(heading.replace(headingAbbreviations, ''))) faults.push('more than one sentence');
   const words = headingPhrases
     .reduce((text, phrase) => text.replaceAll(phrase, ''), heading)
     .split(/\s+/)
@@ -454,6 +484,11 @@ test('the heading check finds title case and punctuation', () => {
     'Questions:',
     'How a study runs. one file in',
     'setup and simulation',
+    'setup',
+    'Proteins vs. membranes. then the rest',
+    'Choose a canvas. then begin',
+    'Set the length, etc. then run',
+    'Ends with e.g.',
   ])
     expect(headingFaults(heading), heading).not.toEqual([]);
   for (const heading of [
@@ -461,21 +496,52 @@ test('the heading check finds title case and punctuation', () => {
     'Agree the Config',
     'What MDXplora refuses',
     'Do Not Track',
-    'setup',
+    'Proteins vs. membranes',
+    'Small systems, e.g. peptides',
+    'One file, i.e. the Config',
+    'Compare cf. the Manifest',
   ])
     expect(headingFaults(heading), heading).toEqual([]);
+  // A heading that opens with code may start in lower case, and is otherwise checked as usual.
+  for (const heading of ['setup Runs First', 'setup.', 'setup. then simulation'])
+    expect(headingFaults(heading, true), heading).not.toEqual([]);
+  for (const heading of ['setup', 'simulation', 'analysis', 'report', 'Config'])
+    expect(headingFaults(heading, true), heading).toEqual([]);
 });
 
 test('every heading is a plain phrase without a full stop', async ({ page }) => {
   for (const path of [...pages, '/no-such-page/']) {
     await page.goto(path);
-    const headings = await page
-      .locator('h1, h2, h3')
-      .evaluateAll((all) => all.map((h) => (h.textContent ?? '').replace(/\s+/g, ' ').trim()));
+    const headings = await page.locator('h1, h2, h3').evaluateAll((all) =>
+      all.map((h) => {
+        // The first child that is not blank text or a comment.
+        const first = [...h.childNodes].find(
+          (n) => n.nodeType === Node.ELEMENT_NODE || (n.nodeType === Node.TEXT_NODE && n.textContent?.trim()),
+        );
+        return {
+          text: (h.textContent ?? '').replace(/\s+/g, ' ').trim(),
+          opensWithCode: first?.nodeName === 'CODE',
+        };
+      }),
+    );
     expect(headings.length, path).toBeGreaterThan(0);
-    for (const heading of headings) expect(headingFaults(heading), `${path}: ${heading}`).toEqual([]);
+    for (const { text, opensWithCode } of headings)
+      expect(headingFaults(text, opensWithCode), `${path}: ${text}`).toEqual([]);
   }
+  // Each stage of the pipeline is headed by its name as code, and nothing else.
   await page.goto('/');
+  const stages = await page
+    .locator('.pipeline h3')
+    .evaluateAll((all) =>
+      all.map((h) =>
+        h.children.length === 1 &&
+        h.firstElementChild?.nodeName === 'CODE' &&
+        h.textContent?.trim() === h.firstElementChild.textContent
+          ? h.firstElementChild.textContent
+          : h.outerHTML,
+      ),
+    );
+  expect(stages).toEqual(['Config', 'setup', 'simulation', 'analysis', 'report', 'Manifest']);
   await expect(page.locator('h1')).toHaveText('From question to publishable molecular dynamics');
   await expect(page.locator('main a[href="/services/"]')).toHaveText('About our services');
 });

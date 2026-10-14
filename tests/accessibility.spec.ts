@@ -377,7 +377,9 @@ test('every button has the controls’ corners', async ({ page }) => {
           own.borderBottomRightRadius,
           own.borderBottomLeftRadius,
         ];
-        return corners.every((corner) => corner === control) ? [] : [`${el.className}: ${corners.join(' ')}`];
+        return corners.every((corner) => corner === control)
+          ? []
+          : [`${el.tagName.toLowerCase()}.${el.getAttribute('class') ?? ''}: ${corners.join(' ')}`];
       });
     });
     expect(found, path).toEqual([]);
