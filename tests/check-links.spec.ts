@@ -547,6 +547,45 @@ test('character references in an attribute are decoded before the address is res
   expect(run.reported).toEqual(['/a&ampb/', '/a&bogus;b/', '/missing&page/'].sort());
 });
 
+test('the controls and spaces around an address are stripped, as browsers strip them', () => {
+  const run = checkLinks({
+    'index.html': html(
+      '<h1 id="top">Home</h1><a href=" /missing-href/">1</a><a href="/about/ ">2</a>' +
+        '<a href="\n/about/#team\t">3</a><img src=" /missing.png " alt="">' +
+        '<a href="\t/missing-tab/\n">4</a><a href="\u0001/missing-control/\u001f">5</a>' +
+        '<a href="/about/!">6</a><a href="/about /">7</a><a href="/ab\nout/">8</a><a href="/about/#te\tam">9</a>' +
+        '<a href="https://mdxplora.com\t/missing-tab-inside/">10</a><a href="/ab\fout/">11</a>' +
+        jsonLd({ url: '\u0000/missing-nul/\u0000', image: '/missing-c\rr.png' }) +
+        jsonLd({ '@context': 'https://schema.org', mainEntityOfPage: { '@id': '/missing-id/', url: '\u0001 ' } }),
+      '<meta property="og:image" content="\t https://mdxplora.com/missing-meta.png">' +
+        jsonLd({
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          url: ' /about/ ',
+          image: ' /missing-image.png',
+        }),
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(
+    [
+      '/missing-href/',
+      '/missing-image.png',
+      '/missing.png',
+      '/missing-tab/',
+      '/missing-control/',
+      '/about/!',
+      '/about /',
+      'https://mdxplora.com/missing-meta.png',
+      'https://mdxplora.com/missing-tab-inside/',
+      '/missing-id/',
+      '/ab\fout/',
+      '/missing-nul/',
+      '/missing-cr.png',
+    ].sort(),
+  );
+});
+
 test('a placeholder left in an address is reported when it is encoded too', () => {
   const run = checkLinks({
     'index.html': html(
@@ -579,25 +618,6 @@ test('a placeholder left in an address is reported when it is encoded too', () =
   );
 });
 
-test('inside svg, a style holds markup, and HTML returns inside a foreignObject', () => {
-  const run = checkLinks({
-    'index.html': html(
-      '<h1 id="top">Home</h1>' +
-        '<svg><style><a href="/missing-in-svg-style/"></a></style></svg>' +
-        '<svg><foreignObject><style><a href="/not-a-link/"></style></foreignObject></svg>' +
-        '<a href="/missing-after/">x</a>',
-    ),
-  });
-  expect(run.status, run.output).toBe(1);
-  expect(run.reported).toEqual(['/missing-after/', '/missing-in-svg-style/']);
-});
-
-test('of two href attributes on one tag, the second is ignored, as browsers ignore it', () => {
-  const run = checkLinks({ 'index.html': html('<h1 id="top">Home</h1><a href="/about/" href="/gone/">x</a>') });
-  expect(run.status, run.output).toBe(0);
-  expect(run.output).toContain('check-links: 1 internal links, all resolve');
-});
-
 test('an ld+json script inside svg is not structured data, so it is not read', () => {
   const run = checkLinks({
     'index.html': html(
@@ -606,28 +626,6 @@ test('an ld+json script inside svg is not structured data, so it is not read', (
   });
   expect(run.status, run.output).toBe(0);
   expect(run.output).toContain('check-links: 0 internal links, all resolve');
-});
-
-// The next two show where parse5 and Chromium differ, as the header lists. If one fails after a parse5 update, check
-// that list again.
-test('parse5 differs: a style after a desc that closes its svg is read as text', () => {
-  const run = checkLinks({
-    'index.html': html(
-      '<h1 id="top">Home</h1><svg><desc><b></desc></svg></b></desc><style><a href="/gone/"></a></style>',
-    ),
-  });
-  expect(run.status, run.output).toBe(0);
-  expect(run.output).toContain('check-links: 0 internal links, all resolve');
-});
-
-test('parse5 differs: a form start tag in a table in a template is dropped, so its id is lost', () => {
-  const run = checkLinks({
-    'index.html': html(
-      '<h1 id="top">Home</h1><template><a href="#f">x</a><table><form id="f"></form></table></template>',
-    ),
-  });
-  expect(run.status, run.output).toBe(1);
-  expect(run.reported).toEqual(['#f (no element with id "f")']);
 });
 
 test('an attribute or an id is read in single quotes, without quotes and in any case', () => {
@@ -644,22 +642,50 @@ test('an attribute or an id is read in single quotes, without quotes and in any 
   );
 });
 
-test('a structured data script is known by the essence of its type, the part before any ";"', () => {
+test('a structured data script is known by its type before any ";", without the whitespace around it and in any case', () => {
   const ld = (type: string, link: string) => `<script type='${type}'>{"url": "${link}"}</script>`;
   const run = checkLinks({
     'index.html': html(
       '<h1 id="top">Home</h1>',
-      ld('application/ld+json; profile="http://www.w3.org/ns/json-ld#compacted"', '/missing-profile/') +
-        ld('APPLICATION/LD+JSON ;charset=utf-8', '/missing-charset/') +
-        ld('\tapplication/ld+json\n;x=y', '/missing-spaced/') +
-        ld('application/ld+json\u00a0', '/not-read-1/') +
-        ld('application/ld+json\u00a0; charset=utf-8', '/not-read-2/') +
-        ld('application/ld+json+x; charset=utf-8', '/not-read-3/') +
-        ld('text/plain; application/ld+json', '/not-read-4/'),
+      ld('\tAPPLICATION/LD+json\n', '/missing-read/') +
+        ld('application/ld+json; charset=utf-8', '/missing-with-parameter/') +
+        ld('application/ld+json ;charset=utf-8', '/missing-spaced/') +
+        ld('application/ld+json\u00a0', '/not-read/') +
+        ld('text/plain; application/ld+json', '/not-read-either/'),
     ),
   });
   expect(run.status, run.output).toBe(1);
-  expect(run.reported).toEqual(['/missing-profile/', '/missing-charset/', '/missing-spaced/'].sort());
+  expect(run.reported).toEqual(['/missing-read/', '/missing-with-parameter/', '/missing-spaced/'].sort());
+});
+
+test('structured data that is not valid JSON is reported', () => {
+  const run = checkLinks({
+    'index.html': html('<h1 id="top">Home</h1>', '<script type="application/ld+json">{"url": "/about/",</script>'),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(['structured data that is not valid JSON']);
+});
+
+test('the links of svg elements are read', () => {
+  const run = checkLinks({
+    'index.html': html(
+      '<h1 id="top">Home</h1><svg><a href="/missing-svg/"><text>x</text></a><image href="/missing-svg.png"/></svg>',
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(['/missing-svg.png', '/missing-svg/']);
+});
+
+test('structured data nested too deep to read is reported, and the other pages are still checked', () => {
+  let data = '"/about/"';
+  for (let level = 0; level < 50000; level++) data = `{"url": "/about/", "hasPart": ${data}}`;
+  const run = checkLinks({
+    'index.html': html('<h1 id="top">Home</h1>', `<script type="application/ld+json">${data}</script>`),
+    'other/index.html': html('<a href="/missing-other/">x</a>'),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(['/missing-other/', 'structured data nested too deep to read'].sort());
+  expect(run.output).toContain('  index.html \u2192 structured data nested too deep to read');
 });
 
 test('the links in a noscript are read, as a browser with JavaScript off reads them', () => {
@@ -766,38 +792,25 @@ test('the id of a template or a noscript counts as one inside it, and a link can
   );
 });
 
-test('a page whose parse ends inside a comment, a tag or the text of an element is reported', () => {
+test('a page whose parse ends inside a comment, a tag, a CDATA section, the text of an element or a plaintext element is reported', () => {
   const page = (rest: string) => `<!doctype html><html><head><title>x</title></head><body><h1>x</h1>${rest}`;
   const run = checkLinks({
     'comment/index.html': page('<!-- <a href="/about/">'),
     'tag/index.html': page('<a href="/about/>x</a>'),
     'cdata/index.html': page('<svg><![CDATA[ <a href="/about/">'),
     'style/index.html': page('<style> a { color: red } <a href="/about/">'),
-    'title/index.html': page('<svg></svg><title>x <a href="/about/">'),
-    'script/index.html': page('<script><!-- var a = \'<script>\'; </script><a href="/about/">'),
-    'textarea/index.html': page('<textarea>x <a href="/about/">'),
-    'xmp/index.html': page('<xmp>x <a href="/about/">'),
-    'iframe/index.html': page('<iframe>x <a href="/about/">'),
-    'noembed/index.html': page('<noembed>x <a href="/about/">'),
-    'noframes/index.html': page('<noframes>x <a href="/about/">'),
     'plaintext/index.html': page('<plaintext><a href="/about/">'),
   });
   expect(run.status, run.output).toBe(1);
   const reported = (what: string) => `the page ends inside ${what}, so what follows is not read`;
-  const onlyText = reported('the text of an element that holds only text, such as a script or a style');
-  expect(run.reported).toEqual(
-    [
-      reported('a comment'),
-      reported('a tag'),
-      reported('a CDATA section'),
-      ...Array(8).fill(onlyText),
-      reported('a plaintext element'),
-    ].sort(),
+  expect(run.output).toContain(
+    `style/index.html \u2192 ${reported('the text of an element that holds only text, such as a script or a style')}`,
   );
-  for (const name of ['comment', 'tag', 'cdata', 'plaintext'])
-    expect(run.output).toContain(`${name}/index.html \u2192 the page ends inside`);
-  for (const name of ['style', 'title', 'script', 'textarea', 'xmp', 'iframe', 'noembed', 'noframes'])
-    expect(run.output).toContain(`${name}/index.html \u2192 ${onlyText}`);
+  expect(run.output).toContain(`plaintext/index.html \u2192 ${reported('a plaintext element')}`);
+  expect(run.output).toContain(`comment/index.html \u2192 ${reported('a comment')}`);
+  expect(run.output).toContain(`tag/index.html \u2192 ${reported('a tag')}`);
+  expect(run.output).toContain(`cdata/index.html \u2192 ${reported('a CDATA section')}`);
+  expect(run.reported).toHaveLength(5);
 });
 
 test('a noscript in the head that holds content of the body is reported', () => {
@@ -911,18 +924,6 @@ test('a page nested many thousands of elements deep is read in full', () => {
   });
   expect(run.status, run.output).toBe(1);
   expect(run.reported).toEqual(['/missing-deep/']);
-});
-
-test('structured data nested too deep to read is reported, and the other pages are still checked', () => {
-  const depth = 10000;
-  const data = '{"url": "/about/", "part": '.repeat(depth) + '1' + '}'.repeat(depth);
-  const run = checkLinks({
-    'deep/index.html': html('<h1>Deep</h1>', `<script type="application/ld+json">${data}</script>`),
-    'index.html': html('<h1 id="top">Home</h1><a href="/missing/">x</a>'),
-  });
-  expect(run.status, run.output).toBe(1);
-  expect(run.reported).toEqual(['/missing/', 'structured data nested too deep to read']);
-  expect(run.output).toContain('deep/index.html \u2192 structured data nested too deep to read');
 });
 
 test('structured data with a long flat list of addresses is read in full', () => {

@@ -8,8 +8,9 @@
 // the attributes above on every element, and ids from every element, with character references decoded (/a&amp;b/ is
 // /a&b/) and whether the value is in double quotes, single quotes or none. Nothing in a comment, or in the text of a
 // script, a style or another element that holds only text, is read. Structured data is the text of an HTML script whose
-// type is application/ld+json, compared as a MIME type is: only the part before any ";", without the ASCII whitespace
-// around it, in any ASCII case. It is read as JSON.
+// type, before any ";", without the ASCII whitespace around it and in any case, is application/ld+json. It is read as
+// JSON. As browsers do, the C0 controls and spaces (U+0000 to U+0020) at either end of an address are stripped, and
+// every tab and line break in it is removed; other characters inside it are kept.
 //
 // The content of a template and of a noscript is read too, and its links are checked. But an id on a template or a
 // noscript, or on any element inside one, counts for no link. A link cannot reach a template or its content: a script
@@ -32,8 +33,6 @@
 //   too. A select inside a template is read the same way.
 // - In <svg><desc><b></desc></svg></b></desc><style>...</style>, parse5 reads the style as text and Chromium as svg, so
 //   a link in it is not checked. No parse error shows this, so it is not reported.
-// - In a table in a template, parse5 drops a form start tag, as the standard says, and Chromium keeps it. An id inside
-//   a template counts for no link anyway, so this changes only the reason given for a link to the form's id.
 //
 // A page whose parse ends inside a comment, a tag, a CDATA section or the text of an element that holds only text, or
 // that has a plaintext element, is reported: what follows is then read as text, and on a built page that is a fault. So
@@ -118,7 +117,7 @@ const isAddressKey = (key) => Boolean(key) && (ADDRESS_KEYS.has(key) || key.ends
 // license, are addresses of something else, as is a urlTemplate on a node of any other type.
 const OWN_ADDRESS_KEYS = ['url', 'contentUrl', 'embedUrl'];
 const ENTRY_POINT = new Set(['EntryPoint', 'https://schema.org/EntryPoint', 'http://schema.org/EntryPoint']);
-const isFilled = (value) => typeof value === 'string' && value.trim() !== '';
+const isFilled = (value) => typeof value === 'string' && stripped(value) !== '';
 const hasOwnAddress = (node) =>
   OWN_ADDRESS_KEYS.some((k) => isFilled(node[k])) ||
   ([node['@type']].flat().some((type) => ENTRY_POINT.has(type)) && isFilled(node.urlTemplate));
@@ -196,14 +195,17 @@ const PARSE_ERRORS = {
 // The start tags parse5 keeps inside a select. It keeps a template too, but that is skipped with its content below.
 const SELECT_KEEPS = new Set(['option', 'optgroup', 'hr', 'script']);
 
-// Whether a script's type is that of structured data: its essence, the part before any ";", compared without the ASCII
-// whitespace around it and in any ASCII case, as a MIME type is compared.
+// Whether a script's type is that of structured data: before any ";", without the ASCII whitespace around it and in any
+// case.
 const isStructuredData = (type) =>
-  type !== undefined &&
   type
-    .split(';')[0]
+    ?.split(';')[0]
     .replace(/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g, '')
-    .replace(/[A-Z]/g, (c) => c.toLowerCase()) === 'application/ld+json';
+    .toLowerCase() === 'application/ld+json';
+
+// An address as the URL standard reads it: without the C0 controls and spaces around it, and without any tab or line
+// break.
+const stripped = (address) => address.replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/g, '').replace(/[\t\n\r]/g, '');
 
 // What each page holds, read once: each link as [written, checked, whether it is inside a noscript and not inside a
 // template], its ids, the ids a visitor may not see (see the header), and what is wrong with the page itself.
@@ -244,21 +246,23 @@ function readPage(file) {
       const add = (link) => found.push([link, link, noscriptOnly]);
       for (const key of ['href', 'src']) if (attributes.has(key)) add(attributes.get(key));
       const content = attributes.get('content');
-      if (content && /^https:\/\/mdxplora\.com(?:[/?#]|$)/.test(content)) add(content);
+      if (content && /^https:\/\/mdxplora\.com(?:[/?#]|$)/.test(stripped(content))) add(content);
       for (const key of ['srcset', 'imagesrcset'])
         if (attributes.has(key)) for (const link of srcsetAddresses(attributes.get(key))) add(link);
       if (html === 'script' && isStructuredData(attributes.get('type'))) {
+        let data;
         try {
-          // One at a time: spreading a long list into push overflows the stack.
-          for (const [written, link] of addresses(JSON.parse(node.childNodes.map((text) => text.value).join(''))))
-            found.push([written, link, noscriptOnly]);
+          data = JSON.parse(node.childNodes.map((text) => text.value).join(''));
+        } catch {
+          problems.push('structured data that is not valid JSON');
+        }
+        // One at a time: spreading a long list into push overflows the stack.
+        try {
+          if (data !== undefined)
+            for (const [written, link] of addresses(data)) found.push([written, link, noscriptOnly]);
         } catch (error) {
-          // Data nested too deep to follow overflows the stack, which is not bad JSON.
-          problems.push(
-            error instanceof RangeError
-              ? 'structured data nested too deep to read'
-              : 'structured data that is not valid JSON',
-          );
+          if (!(error instanceof RangeError)) throw error;
+          problems.push('structured data nested too deep to read');
         }
       }
       if (html === 'plaintext') problems.push(endsInside('a plaintext element'));
@@ -292,9 +296,10 @@ let checked = 0;
 for (const page of pages(DIST)) {
   const { found, problems } = readPage(page);
   for (const problem of problems) broken.push(`${relative(DIST, page)} → ${problem}`);
-  // Each link as written, the address on this site it leads to, and whether it is inside a noscript.
+  // Each link as written, without what browsers strip, the address on this site it leads to, and whether it is inside
+  // a noscript.
   const links = found
-    .map(([written, link, inNoscript]) => [written, onSite(link), inNoscript])
+    .map(([written, link, inNoscript]) => [stripped(written), onSite(stripped(link)), inNoscript])
     .filter(([, href]) => href);
   for (const [written, href, inNoscript] of links) {
     checked++;
