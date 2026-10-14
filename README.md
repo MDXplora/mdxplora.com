@@ -42,7 +42,7 @@ run again, by someone who was not there.
 - A trajectory you already have, from other engines, in their own formats.
 - Many systems at once: mutants against wild type, or a sweep across a setting, with one comparison report.
 
-## It refuses rather than guesses
+## What MDXplora refuses
 
 An ambiguous ligand charge, a protein backwards in its membrane, a free-energy surface that never converged: each stops
 the run and is named, with a sentence saying what to fix. A standard error the trajectory cannot support is withheld,

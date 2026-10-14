@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync,
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { Resvg } from '@resvg/resvg-js';
 
 const pages = ['/', '/compute/', '/services/', '/early-access/', '/contact/', '/privacy/'];
 
@@ -420,6 +421,45 @@ test('the setting an earlier version stored for its animation is deleted, and th
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 });
 
+// Headings say plainly what their section holds: in sentence case, as one phrase, with no full stop. After the first
+// word, only names and the software's own terms take a capital.
+const headingNames = new Set(['MDXplora', 'FastMDXplora', 'Config', 'Configs', 'Manifest', 'MD', 'GPU', 'GPUs']);
+const headingPhrases = ['Do Not Track'];
+
+function headingFaults(heading: string): string[] {
+  const faults: string[] = [];
+  if (/[.!?]$/.test(heading)) faults.push('ends in punctuation');
+  if (/[.!?] \p{Lu}/u.test(heading)) faults.push('more than one sentence');
+  const words = headingPhrases
+    .reduce((text, phrase) => text.replaceAll(phrase, ''), heading)
+    .split(/\s+/)
+    .slice(1);
+  for (const word of words.map((w) => w.replace(/[^\p{L}\p{N}]/gu, '')))
+    if (/^\p{Lu}/u.test(word) && !headingNames.has(word)) faults.push(`"${word}" in capitals`);
+  return faults;
+}
+
+test('the heading check finds title case and punctuation', () => {
+  for (const heading of ['Where Studies Will Run', 'Prefer email?', 'Before you ask.', 'A Config goes in. A Manifest'])
+    expect(headingFaults(heading), heading).not.toEqual([]);
+  for (const heading of ['Where studies will run', 'Agree the Config', 'What MDXplora refuses', 'Do Not Track'])
+    expect(headingFaults(heading), heading).toEqual([]);
+});
+
+test('every heading is a plain phrase without a full stop', async ({ page }) => {
+  for (const path of [...pages, '/no-such-page/']) {
+    await page.goto(path);
+    const headings = await page
+      .locator('h1, h2, h3')
+      .evaluateAll((all) => all.map((h) => (h.textContent ?? '').replace(/\s+/g, ' ').trim()));
+    expect(headings.length, path).toBeGreaterThan(0);
+    for (const heading of headings) expect(headingFaults(heading), `${path}: ${heading}`).toEqual([]);
+  }
+  await page.goto('/');
+  await expect(page.locator('h1')).toHaveText('From question to publishable molecular dynamics');
+  await expect(page.locator('main a[href="/services/"]')).toHaveText('About our services');
+});
+
 test('an unknown address gets the not-found page, which claims no address of its own', async ({ page }) => {
   const response = await page.goto('/no-such-page/');
   expect(response?.status()).toBe(404);
@@ -719,9 +759,34 @@ test('the droplet reads as seven atoms in the header, the footer and the browser
   const icon = circlesIn(await (await request.get(href!)).text());
   expect(icon).toHaveLength(7);
   expect(atomGap(icon, 16), 'pixels between atoms at 16 px').toBeGreaterThanOrEqual(0.95);
-  // Both browser icons are addressed with the same fingerprint.
-  const ico = await page.locator('link[rel="icon"][sizes="32x32"]').getAttribute('href');
-  expect(new URL(ico!, page.url()).search).toBe(new URL(href!, page.url()).search);
+});
+
+test('the browser icons carry the small atoms, at an address that changes with them', async ({ page, request }) => {
+  await page.goto('/');
+  const svgHref = (await page.locator('link[rel="icon"][type="image/svg+xml"]').getAttribute('href'))!;
+  const icoHref = (await page.locator('link[rel="icon"][sizes="32x32"]').getAttribute('href'))!;
+  const touchHref = (await page.locator('link[rel="apple-touch-icon"]').getAttribute('href'))!;
+  const svg = await (await request.get(svgHref)).text();
+  // The fingerprint of the other icons, with the tab's own drawing added.
+  const iconVersion = new URL(touchHref, page.url()).searchParams.get('v')!;
+  const expected = createHash('sha256')
+    .update(iconVersion + svg)
+    .digest('hex')
+    .slice(0, 8);
+  for (const href of [svgHref, icoHref]) expect(new URL(href, page.url()).searchParams.get('v'), href).toBe(expected);
+
+  // favicon.ico holds the SVG's drawing at 16 and 32 px, and the full mark at 48.
+  const ico = await (await request.get(icoHref)).body();
+  const images = new Map<number, Buffer>();
+  for (let i = 0; i < ico.readUInt16LE(4); i++) {
+    const entry = 6 + 16 * i;
+    const [length, offset] = [ico.readUInt32LE(entry + 8), ico.readUInt32LE(entry + 12)];
+    images.set(ico[entry] || 256, ico.subarray(offset, offset + length));
+  }
+  const drawn = (size: number) =>
+    Buffer.from(new Resvg(svg, { fitTo: { mode: 'width', value: size } }).render().asPng());
+  for (const size of [16, 32]) expect(images.get(size)!.equals(drawn(size)), `${size} px`).toBe(true);
+  expect(images.get(48)!.equals(drawn(48)), '48 px').toBe(false);
 });
 
 test("the browser's own colour follows the theme", async ({ page }) => {
@@ -797,7 +862,7 @@ test('the home page moves only when asked', async ({ page }) => {
 
 test('"Your data stays yours" sits under the text about compute, not alone in a column', async ({ page }) => {
   await page.goto('/');
-  const section = page.locator('section', { has: page.getByRole('heading', { name: 'Our GPUs, or yours.' }) });
+  const section = page.locator('section', { has: page.getByRole('heading', { name: 'Where studies will run' }) });
   const [head, owned] = await Promise.all(
     ['.section-head', '.owned'].map((part) =>
       section.locator(part).evaluate((el) => el.getBoundingClientRect().toJSON()),

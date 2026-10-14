@@ -11,22 +11,22 @@ export const cards = [
   },
   {
     slug: 'compute',
-    title: 'Our GPUs, or yours.',
+    title: 'Where studies will run',
     text: 'Studies will run on GPUs we provide, and on your own workstation or cluster once the connector is ready.',
   },
   {
     slug: 'services',
-    title: 'Molecular dynamics, done with you or for you.',
+    title: 'Molecular dynamics, run with you or for you',
     text: 'Studies run for you, training for your group, and support.',
   },
   {
     slug: 'early-access',
-    title: 'How early access works.',
+    title: 'How early access works',
     text: 'Who it is for first, what you get, what it costs and what you agree to.',
   },
   {
     slug: 'contact',
-    title: 'Talk to us.',
+    title: 'Contact us',
     text: 'Early access, a study run for you, training or support.',
   },
   {

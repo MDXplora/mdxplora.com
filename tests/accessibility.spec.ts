@@ -193,6 +193,9 @@ test('status colours appear only where they say something', async ({ page }) => 
                 .filter((side) => parseFloat(style[`border${side}Width`]) > 0)
                 .map((side) => style[`border${side}Color`]),
               ...(style.outlineStyle !== 'none' ? [style.outlineColor] : []),
+              ...(style.boxShadow.match(/rgba?\([^)]*\)/g) ?? []),
+              ...(el instanceof SVGElement ? [style.fill, style.stroke] : []),
+              ...(style.textDecorationLine !== 'none' ? [style.textDecorationColor] : []),
             ];
             for (const colour of used) {
               const name = status.get(colour);
