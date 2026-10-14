@@ -14,7 +14,7 @@ const columns = footer.map((column) =>
 <footer class="site-footer">
   <div class="container grid">
     <div class="brand">
-      <Logo id="logo-footer" />
+      <Logo />
       <p>{site.tagline}.</p>
     </div>
     {columns.map((column) => (
@@ -30,10 +30,12 @@ const columns = footer.map((column) =>
       </nav>
     ))}
   </div>
-  <div class="container legal">
-    <p>
-      &copy; {year} {site.name}
-    </p>
+  <div class="container">
+    <div class="legal">
+      <p>
+        &copy; {year} {site.name}
+      </p>
+    </div>
   </div>
 </footer>
 
@@ -41,8 +43,8 @@ const columns = footer.map((column) =>
   .site-footer {
     border-top: 1px solid var(--border);
     background: var(--bg-sunken);
-    padding-block: 64px 32px;
-    font-size: 0.925rem;
+    padding-block: 56px 32px;
+    font-size: 0.9375rem;
   }
   .grid {
     display: grid;
@@ -55,12 +57,12 @@ const columns = footer.map((column) =>
     max-width: 30ch;
   }
   h2 {
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--fg-subtle);
-    margin-bottom: 1rem;
+    letter-spacing: 0;
+    line-height: 1.4;
+    color: var(--fg);
+    margin-bottom: 0.875rem;
   }
   ul {
     list-style: none;
@@ -79,13 +81,13 @@ const columns = footer.map((column) =>
   .legal {
     margin-top: 48px;
     padding-top: 24px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--border-subtle);
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
     gap: 0.5rem 2rem;
     color: var(--fg-subtle);
-    font-size: 0.85rem;
+    font-size: 0.875rem;
   }
   @media (max-width: 760px) {
     .grid {

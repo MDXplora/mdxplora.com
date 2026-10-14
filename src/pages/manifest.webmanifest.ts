@@ -12,8 +12,8 @@ export const GET: APIRoute = () =>
         description: site.support,
         start_url: '/',
         display: 'browser',
-        background_color: colours.ink,
-        theme_color: colours.ink,
+        background_color: colours.ground,
+        theme_color: colours.ground,
         icons: [
           { src: `/icon-192.png?v=${iconVersion}`, sizes: '192x192', type: 'image/png' },
           { src: `/icon-512.png?v=${iconVersion}`, sizes: '512x512', type: 'image/png' },

@@ -41,7 +41,6 @@ const steps = [
 >
   <section class="page-hero">
     <div class="container">
-      <span class="eyebrow">Early access</span>
       <h1>How early access works.</h1>
       <p class="lead">MDXplora is opening to a small number of research groups first. This is what joining means.</p>
       <p class="planned">{site.status}</p>
@@ -52,7 +51,7 @@ const steps = [
     <div class="container grid-2">
       <h2 class="visually-hidden">The terms of early access</h2>
       {terms.map((t) => (
-        <article class="card">
+        <article class="entry">
           <h3>{t.title}</h3>
           <p>{t.text}</p>
         </article>
@@ -63,13 +62,12 @@ const steps = [
   <section class="section">
     <div class="container">
       <div class="section-head">
-        <span class="eyebrow">Joining</span>
         <h2>From a message to your first study.</h2>
       </div>
       <ol class="steps">
         {steps.map((s, i) => (
-          <li>
-            <span>{String(i + 1).padStart(2, '0')}</span>
+          <li class="entry">
+            <span class="step-number">{i + 1}</span>
             <h3>{s.title}</h3>
             <p>{s.text}</p>
           </li>
@@ -91,21 +89,10 @@ const steps = [
     padding: 0;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 2rem;
-  }
-  .steps li {
-    padding-top: 1.25rem;
-    border-top: 2px solid var(--border-strong);
-  }
-  .steps span {
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    color: var(--fg-subtle);
+    gap: 2rem 1.5rem;
   }
   .steps h3 {
-    margin-top: 0.75rem;
-    font-size: 1.15rem;
-    letter-spacing: -0.015em;
+    margin-top: 0.5rem;
   }
   .steps p {
     margin-top: 0.5rem;

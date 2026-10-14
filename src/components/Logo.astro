@@ -4,10 +4,8 @@ import { markElements } from '../lib/brand';
 interface Props {
   size?: number;
   wordmark?: boolean;
-  /** Unique per page, so two logos on one page do not share a gradient id. */
-  id?: string;
 }
-const { size = 28, wordmark = true, id = 'logo-gradient' } = Astro.props;
+const { size = 24, wordmark = true } = Astro.props;
 ---
 
 <span class="logo">
@@ -17,34 +15,28 @@ const { size = 28, wordmark = true, id = 'logo-gradient' } = Astro.props;
     viewBox="0 0 32 32"
     aria-hidden="true"
     focusable="false"
-    set:html={markElements({ id })}
+    set:html={markElements({ tile: false, fill: 'currentColor' })}
   />
-  {wordmark && (
-    <span class="wordmark">
-      MDX<span>plora</span>
-    </span>
-  )}
+  {wordmark && <span class="wordmark">MDXplora</span>}
 </span>
 
 <style>
   .logo {
     display: inline-flex;
     align-items: center;
-    gap: 0.55rem;
+    gap: 0.5rem;
     color: inherit;
   }
+  /* The droplet in the theme's blue, beside the name in the text's colour. */
   svg {
     flex: none;
-    border-radius: 8px;
+    color: var(--accent);
   }
   .wordmark {
     font-family: var(--font-sans);
-    font-weight: 700;
-    font-size: 1.12rem;
-    letter-spacing: -0.02em;
+    font-weight: 600;
+    font-size: 1.0625rem;
+    letter-spacing: -0.015em;
     line-height: 1;
-  }
-  .wordmark span {
-    font-weight: 500;
   }
 </style>

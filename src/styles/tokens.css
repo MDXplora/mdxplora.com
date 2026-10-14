@@ -2,30 +2,25 @@
  * Design tokens.
  *
  * Both themes are defined here once, so a colour changed here changes
- * everywhere. Text colours keep at least 4.5:1 contrast against every
- * background they sit on (WCAG AA); the accessibility tests check it. Text
- * drawn in a gradient, which axe cannot measure, keeps it at every point of
- * the gradient (--ink-gradient), and so does white text on one
- * (--badge-gradient). A form field's edge keeps 3:1 against the card it sits
- * on and its own fill (--field-border, WCAG 1.4.11).
+ * everywhere. The grounds, borders and greys are those of the software the
+ * platform computes with, untinted; MDXplora's own colour is one blue
+ * (--accent), used only for links, the primary action, the focus ring and
+ * the current page. Text colours keep at least 4.5:1 contrast against every
+ * ground of their theme, and so does the text on a filled blue button (WCAG
+ * AA). A form field's edge keeps 3:1 against the card it sits on and its own
+ * fill (--field-border, WCAG 1.4.11). The accessibility tests check all of it.
  */
 
 :root {
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  --radius-s: 8px;
-  --radius-m: 12px;
-  --radius-l: 18px;
-  --page-max: 1180px;
+  /* Two corners: controls, and panels. */
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --page-max: 1080px;
   --gutter: clamp(16px, 4vw, 32px);
-  --section-pad: clamp(72px, 10vw, 128px);
-
-  --teal: #22c3b5;
-  --blue: #4c7dff;
-  --violet: #8b6cff;
-  --brand-gradient: linear-gradient(120deg, var(--teal) 0%, var(--blue) 55%, var(--violet) 100%);
-  --badge-gradient: linear-gradient(120deg, #0e7a71 0%, #2451d6 55%, #6a4bdc 100%);
+  --section-pad: clamp(64px, 8vw, 104px);
 }
 
 /* Dark is the default; light follows. data-theme is set before first paint,
@@ -35,80 +30,68 @@
 :root,
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #070b16;
-  --bg-raised: #0d1426;
-  --bg-sunken: #050810;
-  --surface: #111a31;
-  --surface-hover: #16213d;
-  --border: #1f2a47;
-  --border-strong: #2d3b61;
-  --field-border: #5d6b94;
-  --danger: #ff8a80;
-  --fg: #eef1f8;
-  --fg-muted: #a5aec8;
-  --fg-subtle: #838cab;
-  --positive: #22c3b5;
-  --link: #8fb0ff;
-  --accent: #6f97ff;
-  --accent-fg: #06122f;
-  --code-bg: #0a1022;
-  --glow: rgba(76, 125, 255, 0.18);
-  --particle: 143, 176, 255;
-  --bond: 34, 195, 181;
-  --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 20px 50px -20px rgba(0, 0, 0, 0.6);
-  --ink-gradient: var(--brand-gradient);
+  --bg: #1c1c1d;
+  --bg-raised: #232629;
+  --bg-sunken: #171718;
+  --surface: #212529;
+  --surface-hover: #2a2d31;
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.24);
+  --field-border: #74777d;
+  --fg: #ececee;
+  --fg-muted: #b4b6ba;
+  --fg-subtle: #9a9ca1;
+  --positive: #67e8a3;
+  --danger: #ff7272;
+  --accent: #4c9aff;
+  --accent-hover: #6aacff;
+  --accent-fg: #0b0b0c;
+  --link: var(--accent);
 }
 
 :root[data-theme='light'] {
   color-scheme: light;
-  --bg: #fafbfe;
+  --bg: #faf9f5;
   --bg-raised: #ffffff;
-  --bg-sunken: #f1f3f9;
+  --bg-sunken: #f3f2ed;
   --surface: #ffffff;
-  --surface-hover: #f5f7fc;
-  --border: #e2e6f0;
-  --border-strong: #cbd2e3;
-  --field-border: #7c86a3;
-  --danger: #c2372f;
-  --fg: #0b1122;
-  --fg-muted: #4b5573;
-  --fg-subtle: #5f6886;
-  --positive: #0e7a71;
-  --link: #2451d6;
-  --accent: #2451d6;
+  --surface-hover: #efeee9;
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --border: rgba(0, 0, 0, 0.14);
+  --border-strong: rgba(0, 0, 0, 0.22);
+  --field-border: #85857f;
+  --fg: #141413;
+  --fg-muted: #4a4a48;
+  --fg-subtle: #696965;
+  --positive: #1b7a45;
+  --danger: #c0262d;
+  --accent: #155ad1;
+  --accent-hover: #104ab0;
   --accent-fg: #ffffff;
-  --code-bg: #0b1122;
-  --glow: rgba(36, 81, 214, 0.12);
-  --particle: 36, 81, 214;
-  --bond: 20, 150, 140;
-  --shadow: 0 1px 2px rgba(11, 17, 34, 0.04), 0 18px 40px -24px rgba(11, 17, 34, 0.25);
-  --ink-gradient: var(--badge-gradient);
+  --link: var(--accent);
 }
 
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
     color-scheme: light;
-    --bg: #fafbfe;
+    --bg: #faf9f5;
     --bg-raised: #ffffff;
-    --bg-sunken: #f1f3f9;
+    --bg-sunken: #f3f2ed;
     --surface: #ffffff;
-    --surface-hover: #f5f7fc;
-    --border: #e2e6f0;
-    --border-strong: #cbd2e3;
-    --field-border: #7c86a3;
-    --danger: #c2372f;
-    --fg: #0b1122;
-    --fg-muted: #4b5573;
-    --fg-subtle: #5f6886;
-    --positive: #0e7a71;
-    --link: #2451d6;
-    --accent: #2451d6;
+    --surface-hover: #efeee9;
+    --border-subtle: rgba(0, 0, 0, 0.08);
+    --border: rgba(0, 0, 0, 0.14);
+    --border-strong: rgba(0, 0, 0, 0.22);
+    --field-border: #85857f;
+    --fg: #141413;
+    --fg-muted: #4a4a48;
+    --fg-subtle: #696965;
+    --positive: #1b7a45;
+    --danger: #c0262d;
+    --accent: #155ad1;
+    --accent-hover: #104ab0;
     --accent-fg: #ffffff;
-    --code-bg: #0b1122;
-    --glow: rgba(36, 81, 214, 0.12);
-    --particle: 36, 81, 214;
-    --bond: 20, 150, 140;
-    --shadow: 0 1px 2px rgba(11, 17, 34, 0.04), 0 18px 40px -24px rgba(11, 17, 34, 0.25);
-    --ink-gradient: var(--badge-gradient);
+    --link: var(--accent);
   }
 }

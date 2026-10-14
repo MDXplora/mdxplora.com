@@ -20,7 +20,8 @@ for (const theme of ['dark', 'light']) {
   }
 }
 
-// What axe cannot measure: text drawn in a gradient, white text on one, and a form field's edge.
+// What axe cannot measure: the theme's colours on every ground of the theme, not only where they sit today, and a
+// form field's edge.
 const luminance = (rgb: number[]) => {
   const [r, g, b] = rgb.map((c) => {
     const s = c / 255;
@@ -33,31 +34,40 @@ const contrast = (a: number[], b: number[]) => {
   return (high + 0.05) / (low + 0.05);
 };
 const colours = (css: string) => [...css.matchAll(/rgba?\((\d+), (\d+), (\d+)/g)].map((m) => m.slice(1, 4).map(Number));
-// Every point of a gradient between its stops, as the browser draws it.
-const along = (stops: number[][]) =>
-  stops
-    .slice(1)
-    .flatMap((to, i) =>
-      Array.from({ length: 11 }, (_, k) => stops[i].map((c, j) => Math.round(c + ((to[j] - c) * k) / 10))),
+
+// Each token as the browser resolves it, in rgb().
+async function resolved(page: Page, names: string[]): Promise<Record<string, number[]>> {
+  const values = await page.evaluate((names) => {
+    const probe = document.createElement('span');
+    document.body.append(probe);
+    const out = Object.fromEntries(
+      names.map((name) => {
+        probe.style.color = `var(${name})`;
+        return [name, getComputedStyle(probe).color];
+      }),
     );
+    probe.remove();
+    return out;
+  }, names);
+  return Object.fromEntries(Object.entries(values).map(([name, css]) => [name, colours(css)[0]]));
+}
+
+const grounds = ['--bg', '--bg-raised', '--bg-sunken', '--surface', '--surface-hover'];
+const text = ['--fg', '--fg-muted', '--fg-subtle', '--link', '--accent', '--positive', '--danger'];
 
 for (const theme of ['dark', 'light']) {
-  test(`in the ${theme} theme, gradients and form fields keep their contrast`, async ({ page }) => {
+  test(`in the ${theme} theme, text and the accent keep 4.5:1 on every ground, and form fields 3:1`, async ({
+    page,
+  }) => {
     await page.addInitScript((value) => localStorage.setItem('mdxplora-theme', value), theme);
     await page.goto('/');
-    const ground = colours(await page.evaluate(() => getComputedStyle(document.body).backgroundColor))[0];
-    const heading = await page.locator('.hero .gradient-text').evaluate((el) => getComputedStyle(el).backgroundImage);
-    expect(colours(heading)).toHaveLength(3);
-    for (const point of along(colours(heading)))
-      expect(contrast(point, ground), `${point}`).toBeGreaterThanOrEqual(4.5);
-
-    await page.goto('/compute/');
-    const badge = await page
-      .locator('.step-number')
-      .first()
-      .evaluate((el) => getComputedStyle(el).backgroundImage);
-    expect(colours(badge)).toHaveLength(3);
-    for (const point of along(colours(badge))) expect(contrast(point, [255, 255, 255])).toBeGreaterThanOrEqual(4.5);
+    const token = await resolved(page, [...grounds, ...text, '--accent-fg', '--accent-hover']);
+    for (const ground of grounds)
+      for (const name of text)
+        expect(contrast(token[name], token[ground]), `${name} on ${ground}`).toBeGreaterThanOrEqual(4.5);
+    // The words on a filled blue button, at rest and under the pointer.
+    for (const fill of ['--accent', '--accent-hover'])
+      expect(contrast(token['--accent-fg'], token[fill]), `on ${fill}`).toBeGreaterThanOrEqual(4.5);
 
     await page.goto('/contact/');
     const [edge, fill, card] = await page.locator('input[name="name"]').evaluate((el) => {
@@ -69,19 +79,77 @@ for (const theme of ['dark', 'light']) {
   });
 }
 
-test('the header blurs what scrolls under it, with the prefix older Safari reads kept too', async ({
+test('the focus ring is visible, in the accent, on every kind of control', async ({ page }) => {
+  await page.goto('/contact/');
+  for (const selector of ['.site-header a.home', 'a.button-primary', '.theme-toggle', 'input[name="name"]']) {
+    const target = page.locator(selector).first();
+    if (!(await target.isVisible())) continue;
+    await target.focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    const [style, width, accent] = await target.evaluate((el) => {
+      const own = getComputedStyle(el);
+      const probe = document.createElement('span');
+      probe.style.color = 'var(--accent)';
+      document.body.append(probe);
+      const accent = getComputedStyle(probe).color;
+      probe.remove();
+      return [own.outlineStyle, parseFloat(own.outlineWidth), own.outlineColor === accent];
+    });
+    expect(style, selector).toBe('solid');
+    expect(width, selector).toBeGreaterThanOrEqual(2);
+    expect(accent, selector).toBe(true);
+  }
+});
+
+test('no page draws a gradient, a glow or a shadow behind its text', async ({ page }) => {
+  for (const path of [...pages]) {
+    for (const theme of ['dark', 'light']) {
+      await page.addInitScript((value) => localStorage.setItem('mdxplora-theme', value), theme);
+      await page.goto(path);
+      const found = await page.evaluate(() =>
+        [...document.querySelectorAll('*')].flatMap((el) => {
+          const style = getComputedStyle(el);
+          const what = [
+            style.backgroundImage.includes('gradient') && 'gradient',
+            style.textShadow !== 'none' && 'text shadow',
+            style.boxShadow !== 'none' && 'shadow',
+            style.backdropFilter !== 'none' && 'backdrop filter',
+          ].filter(Boolean);
+          return what.length ? [`${el.tagName.toLowerCase()}.${el.className}: ${what.join(', ')}`] : [];
+        }),
+      );
+      expect(found, `${path} in ${theme}`).toEqual([]);
+    }
+  }
+});
+
+test('the header is solid, on the page ground, with a hairline beneath and nothing blurred', async ({
   page,
   request,
 }) => {
   await page.goto('/');
-  const filter = await page.locator('.site-header').evaluate((el) => getComputedStyle(el).backdropFilter);
-  expect(filter).toContain('blur');
+  await page.evaluate(() => window.scrollTo(0, 600));
+  const [background, ground, filter, border, borderStyle] = await page.locator('.site-header').evaluate((el) => {
+    const own = getComputedStyle(el);
+    return [
+      own.backgroundColor,
+      getComputedStyle(document.body).backgroundColor,
+      own.backdropFilter,
+      own.borderBottomWidth,
+      own.borderBottomStyle,
+    ];
+  });
+  expect(background).toBe(ground);
+  expect(background).not.toMatch(/rgba\(.*, 0(\.\d+)?\)$/);
+  expect(filter).toBe('none');
+  expect(border).toBe('1px');
+  expect(borderStyle).toBe('solid');
   const sheets = await page
     .locator('link[rel="stylesheet"]')
     .evaluateAll((links) => links.map((l) => (l as HTMLLinkElement).href));
   const css = (await Promise.all(sheets.map(async (href) => (await request.get(href)).text()))).join('\n');
-  expect(css).toMatch(/[^-]backdrop-filter:\s*saturate/);
-  expect(css).toContain('-webkit-backdrop-filter:saturate');
+  expect(css).not.toContain('backdrop-filter');
 });
 
 // WCAG 2.2 SC 2.4.11, which axe does not check: going back up a page with Shift+Tab, no focused element ends up

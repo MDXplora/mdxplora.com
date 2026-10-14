@@ -41,7 +41,6 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
 <Base title="Contact" description="Talk to MDXplora about early access, a study, training or support.">
   <section class="page-hero">
     <div class="container">
-      <span class="eyebrow">Contact</span>
       <h1>Talk to us.</h1>
       <p class="lead">Early access, a study you need run, training for your group, or support. We read everything.</p>
     </div>
@@ -240,8 +239,8 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
   label {
     display: grid;
     gap: 0.45rem;
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 0.9375rem;
+    font-weight: 500;
   }
   label em {
     font-style: normal;
@@ -265,7 +264,7 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
   textarea:focus {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
-    border-color: transparent;
+    border-color: var(--accent);
   }
   textarea {
     resize: vertical;
@@ -284,8 +283,8 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
   }
   legend {
     padding-inline: 0.4rem;
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 0.9375rem;
+    font-weight: 500;
   }
   legend em {
     font-style: normal;
@@ -327,12 +326,12 @@ const endpoint = site.formspreeId ? `https://formspree.io/f/${site.formspreeId}`
     border-color: var(--danger);
   }
   .fine {
-    font-size: 0.825rem;
+    font-size: 0.875rem;
     color: var(--fg-subtle);
   }
   .direct h2 {
-    font-size: 1.1rem;
-    letter-spacing: -0.015em;
+    font-size: 1.0625rem;
+    letter-spacing: -0.011em;
   }
   .direct h2 + p {
     margin-top: 0.5rem;

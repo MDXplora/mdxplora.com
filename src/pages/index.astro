@@ -1,5 +1,4 @@
 ---
-import ParticleField from '../components/ParticleField.astro';
 import Base from '../layouts/Base.astro';
 import { engine, site } from '../data/site';
 
@@ -120,43 +119,35 @@ const faq = [
 <Base>
   <script is:inline type="application/ld+json" slot="head" set:html={JSON.stringify(structuredData)} />
   <section class="hero">
-    <ParticleField>
-      <div class="container hero-inner">
-        <div class="hero-copy">
-          <a class="pill" href="/contact/?topic=early-access">
-            <span class="dot"></span> Ask for early access
+    <div class="container hero-inner">
+      <div class="hero-copy">
+        <h1>
+          <span class="line">From question to</span> <span class="line">publishable</span>{' '}
+          <span class="line">molecular dynamics</span>
+        </h1>
+        <p class="support">{site.support}</p>
+        <p class="lead">
+          MDXplora prepares the system, runs the dynamics, analyses the trajectory and writes up the study, in your
+          browser.
+        </p>
+        <p class="planned">{site.status}</p>
+        <div class="cta">
+          <a class="button button-primary" href="/contact/?topic=early-access">
+            Join early access
           </a>
-          <h1>
-            <span class="line">From question to</span>{' '}
-            <span class="gradient-text">
-              <span class="line">publishable</span> <span class="line">molecular dynamics</span>
-            </span>
-          </h1>
-          <p class="support">{site.support}</p>
-          <p class="lead">
-            MDXplora prepares the system, runs the dynamics, analyses the trajectory and writes up the study, in your
-            browser.
-          </p>
-          <p class="planned">{site.status}</p>
-          <div class="cta">
-            <a class="button button-primary" href="/contact/?topic=early-access">
-              Join early access
-            </a>
-            <a class="button button-secondary" href="#how">
-              How it works
-            </a>
-          </div>
+          <a class="button button-secondary" href="#how">
+            How it works
+          </a>
         </div>
+      </div>
 
-        <figure class="preview" aria-label="A preview of a study being written in MDXplora">
+      <figure class="preview" aria-label="A preview of a study being written in MDXplora">
+        <div class="window">
           <div class="preview-bar">
-            <span></span>
-            <span></span>
-            <span></span>
             <span class="preview-title">New study</span>
           </div>
           <div class="preview-body">
-            <p class="bubble">Simulate trypsin with benzamidine bound at pH 6.5 for 100 ns</p>
+            <p class="request">Simulate trypsin with benzamidine bound at pH 6.5 for 100 ns</p>
             <div class="proposal">
               <div class="proposal-head">
                 <span>Config</span>
@@ -177,16 +168,15 @@ const faq = [
               <span class="chip">Your workstation</span>
             </div>
           </div>
-          <figcaption>A preview of MDXplora as planned.</figcaption>
-        </figure>
-      </div>
-    </ParticleField>
+        </div>
+        <figcaption>A preview of MDXplora as planned.</figcaption>
+      </figure>
+    </div>
   </section>
 
   <section class="section" id="how">
     <div class="container">
       <div class="section-head">
-        <span class="eyebrow">How a study runs</span>
         <h2>A Config goes in. A Manifest comes out.</h2>
         <p>
           One file describes the whole study. Four phases run from it, each in its own directory, and one record says
@@ -194,9 +184,8 @@ const faq = [
         </p>
       </div>
       <ol class="pipeline">
-        {phases.map((p, i) => (
+        {phases.map((p) => (
           <li class:list={['stage', { edge: p.kind !== 'phase' }]}>
-            <span class="stage-index">{String(i).padStart(2, '0')}</span>
             <h3>
               <code>{p.name}</code>
             </h3>
@@ -211,7 +200,6 @@ const faq = [
   <section class="section">
     <div class="container">
       <div class="section-head">
-        <span class="eyebrow">Three ways to start</span>
         <h2>Describe it, build it, or bring it.</h2>
       </div>
       <div class="grid-3">
@@ -228,12 +216,11 @@ const faq = [
   <section class="section">
     <div class="container">
       <div class="section-head">
-        <span class="eyebrow">What you can study</span>
         <h2>From one protein to a campaign.</h2>
       </div>
       <div class="grid-3">
         {studies.map((s) => (
-          <article class="card">
+          <article class="entry">
             <h3>{s.title}</h3>
             <p>{s.text}</p>
           </article>
@@ -245,7 +232,6 @@ const faq = [
   <section class="section">
     <div class="container split">
       <div class="section-head">
-        <span class="eyebrow">Scientific integrity</span>
         <h2>It refuses rather than guesses.</h2>
         <p>
           An ambiguous ligand charge, a protein backwards in its membrane, a free-energy surface that never converged:
@@ -274,17 +260,16 @@ const faq = [
   <section class="section">
     <div class="container split">
       <div class="section-head">
-        <span class="eyebrow">Compute</span>
         <h2>Our GPUs, or yours.</h2>
         <p>
           Studies will run on GPUs we provide. Connecting your own workstation or cluster is planned: your machine will
           ask MDXplora for work, so nothing reaches into your network.
         </p>
         <a class="text-link" href="/compute/">
-          How your own compute will connect →
+          How your own compute will connect
         </a>
       </div>
-      <div class="card owned">
+      <div class="owned">
         <h3>Your data stays yours</h3>
         <p>Every study can be downloaded whole: the Config, the data, the report and the Manifest.</p>
       </div>
@@ -294,14 +279,13 @@ const faq = [
   <section class="section">
     <div class="container split">
       <div class="section-head">
-        <span class="eyebrow">Services</span>
         <h2>When you would rather we ran it.</h2>
         <p>For groups without someone to run molecular dynamics, and for labs that depend on it.</p>
         <a class="text-link" href="/services/">
-          Services →
+          Services
         </a>
       </div>
-      <ul class="card offers">
+      <ul class="offers">
         <li>
           <h3>Studies run for you</h3>
           <p>You get the report, the data and the full record behind them.</p>
@@ -321,7 +305,6 @@ const faq = [
   <section class="section" id="faq">
     <div class="container faq">
       <div class="section-head">
-        <span class="eyebrow">Questions</span>
         <h2>Before you ask.</h2>
       </div>
       <div class="faq-list">
@@ -346,54 +329,37 @@ const faq = [
 
 <style>
   .hero {
-    position: relative;
-    overflow: hidden;
-    padding-block: clamp(64px, 9vw, 120px) clamp(72px, 10vw, 128px);
-    background:
-      radial-gradient(70rem 36rem at 80% -20%, var(--glow), transparent 70%),
-      radial-gradient(50rem 30rem at -10% 10%, color-mix(in srgb, var(--teal) 9%, transparent), transparent 70%);
-    border-bottom: 1px solid var(--border);
+    padding-block: clamp(56px, 8vw, 104px);
+    border-bottom: 1px solid var(--border-subtle);
   }
   .hero-inner {
-    position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-    gap: clamp(40px, 6vw, 80px);
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: clamp(40px, 6vw, 72px);
     align-items: center;
-  }
-  .hero .pill {
-    text-decoration: none;
-  }
-  .hero h1 {
-    margin-top: 1.5rem;
-    font-size: clamp(2.6rem, 6.2vw, 4.6rem);
-    letter-spacing: -0.045em;
-    line-height: 1.02;
   }
   /* Three lines where there is room: the question, then what it becomes. The
      size is set so the longest line, "molecular dynamics", fits the column. */
   @media (min-width: 901px) {
     .hero h1 {
-      font-size: min(5.2vw, 3.85rem);
-    }
-    .hero h1 .line,
-    .hero h1 .gradient-text {
-      display: block;
+      font-size: min(4.4vw, 3.25rem);
     }
     .hero h1 .line {
+      display: block;
       white-space: nowrap;
     }
   }
   .support {
     margin-top: 1.25rem;
-    font-size: clamp(1.15rem, 2vw, 1.4rem);
-    font-weight: 500;
+    max-width: 34rem;
+    font-size: 1.1875rem;
+    line-height: 1.5;
     color: var(--fg);
   }
   .lead {
     margin-top: 1rem;
-    max-width: 36rem;
-    font-size: 1.075rem;
+    max-width: 34rem;
+    font-size: 1.0625rem;
     color: var(--fg-muted);
   }
   .cta {
@@ -403,100 +369,103 @@ const faq = [
     gap: 0.75rem;
   }
 
-  .preview {
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-l);
-    background: var(--bg-raised);
-    box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.55);
+  /* The preview is drawn as the platform's own interface is, in its dark scheme whichever theme the page is in: its
+     greys, its type and a thin edge, with blue only for the machine the study will run on. */
+  .window {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-m);
+    background: #1c1c1d;
+    color: #ececee;
     overflow: hidden;
+    font-size: 0.875rem;
   }
   .preview-bar {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0.8rem 1rem;
-    border-bottom: 1px solid var(--border);
-  }
-  .preview-bar > span:not(.preview-title) {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--border-strong);
+    padding: 0.625rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    background: #171718;
   }
   .preview-title {
-    margin-left: 0.75rem;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--fg-subtle);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #b4b6ba;
   }
   .preview-body {
     display: grid;
-    gap: 1rem;
-    padding: 1.25rem;
+    gap: 0.875rem;
+    padding: 1rem;
   }
-  .bubble {
+  .request {
     justify-self: end;
     max-width: 85%;
-    padding: 0.7rem 1rem;
-    border-radius: 14px 14px 4px 14px;
-    background: var(--accent);
-    color: var(--accent-fg);
-    font-size: 0.9rem;
-    font-weight: 500;
+    padding: 0.625rem 0.875rem;
+    border-radius: var(--radius-s);
+    background: #2a2d31;
+    color: #ececee;
   }
   .proposal {
-    border: 1px solid var(--border);
-    border-radius: var(--radius-m);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-s);
     overflow: hidden;
   }
   .proposal-head {
     display: flex;
     justify-content: space-between;
-    padding: 0.6rem 1rem;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--fg-muted);
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
+    align-items: center;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #ececee;
+    background: #212529;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   }
   .valid {
-    color: var(--positive);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #67e8a3;
   }
-  .valid::before {
-    content: '✓ ';
+  .valid::before,
+  .chip-on::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
   }
   .proposal .code {
     border: 0;
     border-radius: 0;
-    font-size: 0.8rem;
   }
   .run-on {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.8rem;
+    font-size: 0.8125rem;
   }
   .run-label {
-    color: var(--fg-subtle);
-    font-weight: 600;
     margin-right: 0.25rem;
+    color: #9a9ca1;
   }
   .chip {
-    padding: 0.35rem 0.75rem;
-    border: 1px solid var(--border-strong);
-    border-radius: 999px;
-    color: var(--fg-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-s);
+    color: #b4b6ba;
   }
   .chip-on {
-    border-color: var(--accent);
-    color: var(--fg);
-    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border-color: #4c9aff;
+    color: #ececee;
+  }
+  .chip-on::before {
+    background: #4c9aff;
   }
   .preview figcaption {
-    padding: 0.75rem 1.25rem 1rem;
-    border-top: 1px solid var(--border);
-    font-size: 0.8rem;
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
     color: var(--fg-subtle);
   }
 
@@ -508,138 +477,106 @@ const faq = [
     grid-template-columns: repeat(6, 1fr);
     gap: 1px;
     border: 1px solid var(--border);
-    border-radius: var(--radius-l);
+    border-radius: var(--radius-m);
     overflow: hidden;
     background: var(--border);
   }
   .stage {
-    position: relative;
-    padding: 1.5rem 1.25rem 1.75rem;
-    background: var(--surface);
+    padding: 1.25rem 1.125rem 1.5rem;
+    background: var(--bg);
   }
   .stage.edge {
-    background: color-mix(in srgb, var(--accent) 7%, var(--surface));
-  }
-  .stage-index {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--fg-subtle);
-  }
-  .stage h3 {
-    margin-top: 0.9rem;
-    font-size: 1.05rem;
+    background: var(--surface);
   }
   .stage h3 code {
     font-family: var(--font-mono);
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    font-size: 0.9375rem;
+    font-weight: 500;
   }
   .stage-kind {
     display: block;
-    margin-top: 0.2rem;
-    font-size: 0.75rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-size: 0.8125rem;
     color: var(--fg-subtle);
   }
   .stage p {
-    margin-top: 0.75rem;
-    font-size: 0.9rem;
+    margin-top: 0.625rem;
+    font-size: 0.9375rem;
     color: var(--fg-muted);
-  }
-  .text-link {
-    display: inline-block;
-    margin-top: 1.25rem;
-    font-weight: 600;
-    text-decoration: none;
-  }
-  .text-link:hover {
-    text-decoration: underline;
   }
 
   .split {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: clamp(32px, 6vw, 72px);
-    align-items: center;
+    align-items: start;
   }
   .split .section-head {
     margin-bottom: 0;
   }
   .checks {
     margin: 1.5rem 0 0;
-    padding: 0;
-    list-style: none;
+    padding-left: 1.125rem;
     display: grid;
-    gap: 0.75rem;
+    gap: 0.5rem;
     color: var(--fg-muted);
   }
-  .checks li {
-    position: relative;
-    padding-left: 1.75rem;
-  }
-  .checks li::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0.45em;
-    width: 0.9rem;
-    height: 0.9rem;
-    border-radius: 50%;
-    background: color-mix(in srgb, var(--teal) 20%, transparent);
-    box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--teal) 70%, transparent);
+  .checks li::marker {
+    color: var(--fg-subtle);
   }
   .refusal {
     margin: 0;
-    padding: 1.5rem;
-    border: 1px solid color-mix(in srgb, #f2a23a 45%, var(--border));
-    border-radius: var(--radius-l);
-    background: color-mix(in srgb, #f2a23a 6%, var(--surface));
-    box-shadow: var(--shadow);
+    padding: 1.25rem 1.375rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    background: var(--surface);
   }
   .refusal-head {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    font-weight: 700;
+    gap: 0.625rem;
+    font-weight: 600;
   }
   .refusal-mark {
     display: inline-grid;
     place-items: center;
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 1.25rem;
+    height: 1.25rem;
     border-radius: 50%;
-    background: #f2a23a;
-    color: #1a1204;
-    font-weight: 800;
-    font-size: 0.85rem;
+    background: var(--danger);
+    color: var(--bg);
+    font-weight: 700;
+    font-size: 0.75rem;
   }
   .refusal p {
-    margin-top: 0.9rem;
+    margin-top: 0.75rem;
     color: var(--fg-muted);
   }
   .refusal .refusal-fix {
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-subtle);
     color: var(--fg);
-    font-weight: 500;
   }
-  .owned h3 {
-    font-size: 1.3rem;
+  .owned {
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+  }
+  .owned p {
+    margin-top: 0.5rem;
+    color: var(--fg-muted);
   }
   .offers {
     list-style: none;
     margin: 0;
-    display: grid;
-    gap: 0;
-    padding: 0.5rem 1.75rem;
-  }
-  .offers li {
-    padding-block: 1.1rem;
-  }
-  .offers li + li {
+    padding: 0;
     border-top: 1px solid var(--border);
   }
+  .offers li {
+    padding-block: 1.125rem;
+    border-bottom: 1px solid var(--border);
+  }
   .offers p {
-    margin-top: 0.3rem;
+    margin-top: 0.25rem;
+    color: var(--fg-muted);
   }
 
   .faq {
@@ -657,9 +594,9 @@ const faq = [
     border-top: 1px solid var(--border);
   }
   .faq-list summary {
-    padding: 1.15rem 0;
-    font-weight: 600;
-    font-size: 1.05rem;
+    padding: 1.125rem 0;
+    font-weight: 500;
+    font-size: 1.0625rem;
     cursor: pointer;
     list-style: none;
     display: flex;
@@ -675,9 +612,10 @@ const faq = [
     font-weight: 400;
   }
   .faq-list details[open] summary::after {
-    content: '−';
+    content: '\2212';
   }
   .faq-list p {
+    max-width: 40rem;
     padding-bottom: 1.25rem;
     color: var(--fg-muted);
     overflow-wrap: anywhere;

@@ -39,7 +39,6 @@ const process = [
 >
   <section class="page-hero">
     <div class="container">
-      <span class="eyebrow">Services</span>
       <h1>Molecular dynamics, done with you or for you.</h1>
       <p class="lead">When you want a study done, a group trained, or someone to ask, we can help.</p>
     </div>
@@ -53,7 +52,7 @@ const process = [
           <h3>{o.title}</h3>
           <p>{o.text}</p>
           <a class="text-link" href={o.link}>
-            Get in touch →
+            Get in touch
           </a>
         </article>
       ))}
@@ -63,14 +62,13 @@ const process = [
   <section class="section">
     <div class="container">
       <div class="section-head">
-        <span class="eyebrow">How a study run for you works</span>
         <h2>Agreed on paper before anything runs.</h2>
         <p>You see exactly what will run before it runs, and you get the full record of what did.</p>
       </div>
       <ol class="process">
         {process.map((p, i) => (
-          <li>
-            <span>{String(i + 1).padStart(2, '0')}</span>
+          <li class="entry">
+            <span class="step-number">{i + 1}</span>
             <h3>{p.title}</h3>
             <p>{p.text}</p>
           </li>
@@ -85,19 +83,11 @@ const process = [
     display: flex;
     flex-direction: column;
   }
-  .offer h3 {
-    font-size: 1.3rem;
-  }
   .offer p {
     flex: 1;
   }
-  .text-link {
-    margin-top: 1.5rem;
-    font-weight: 600;
-    text-decoration: none;
-  }
-  .text-link:hover {
-    text-decoration: underline;
+  .offer .text-link {
+    margin-top: 1.25rem;
   }
   .process {
     list-style: none;
@@ -105,22 +95,10 @@ const process = [
     padding: 0;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 2rem;
-    counter-reset: step;
-  }
-  .process li {
-    padding-top: 1.25rem;
-    border-top: 2px solid var(--border-strong);
-  }
-  .process span {
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    color: var(--fg-subtle);
+    gap: 2rem 1.5rem;
   }
   .process h3 {
-    margin-top: 0.75rem;
-    font-size: 1.15rem;
-    letter-spacing: -0.015em;
+    margin-top: 0.5rem;
   }
   .process p {
     margin-top: 0.5rem;

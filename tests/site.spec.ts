@@ -49,7 +49,7 @@ test('every page carries the security policy and nothing on it breaks the policy
     }
     await expect(page.locator('meta[name="referrer"]')).toHaveAttribute('content', 'strict-origin-when-cross-origin');
   }
-  // Give late scripts (the hero fluid, the form) a moment to run.
+  // Give late scripts (the form) a moment to run.
   await page.goto('/');
   await page.waitForTimeout(500);
   expect(violations).toEqual([]);
@@ -370,7 +370,7 @@ test('nothing calls MDXplora a company or speaks of customers', async ({ page, r
   }
   const source = textFiles('src');
   expect(source).toContain(join('src', 'data', 'cards.ts'));
-  expect(source.length, 'text files read under src/').toBeGreaterThanOrEqual(28);
+  expect(source.length, 'text files read under src/').toBeGreaterThanOrEqual(26);
   for (const file of ['README.md', 'DEVELOPMENT.md', ...source])
     expect(commerceFound(readFileSync(file, 'utf8')), file).toEqual([]);
 });
@@ -396,7 +396,6 @@ test('the privacy page names everything the site keeps in the browser', async ({
   // Each key the site stores, and the words the privacy page uses for it. A new key fails here until it is described.
   const described: Record<string, string> = {
     'mdxplora-theme': 'light and dark',
-    'mdxplora-fluid': 'pause the animation',
   };
   const stored = new Set<string>();
   for (const file of readdirSync('src', { recursive: true, encoding: 'utf8' })) {
@@ -543,7 +542,7 @@ test.describe('without JavaScript', () => {
         );
       });
       await scripted.close();
-      expect(without['--bg']).toBe(scheme === 'light' ? '#fafbfe' : '#070b16');
+      expect(without['--bg']).toBe(scheme === 'light' ? '#faf9f5' : '#1c1c1d');
       expect(without).toEqual(expected);
     });
   }
@@ -645,6 +644,8 @@ test('the browser icon is the current mark, at an address that changes with it',
   expect(href).toMatch(/^\/favicon\.svg\?v=[0-9a-f]{8}$/);
   const svg = await (await request.get(href!)).text();
   expect(svg.match(/<circle/g)?.length, 'the droplet has seven atoms').toBe(7);
+  expect(svg, 'in white on solid blue').toMatch(/<rect [^>]*fill="#155ad1"/);
+  expect(svg).not.toMatch(/gradient/i);
 });
 
 test("the browser's own colour follows the theme", async ({ page }) => {
@@ -657,83 +658,58 @@ test("the browser's own colour follows the theme", async ({ page }) => {
   expect(await colour()).toBe(await background());
 });
 
-test.describe('the hero fluid', () => {
-  const state = (page: import('@playwright/test').Page) =>
-    page.locator('canvas.particle-field').getAttribute('data-state');
-
-  test('runs while on screen and stops when scrolled away', async ({ page }) => {
-    await page.goto('/');
-    await expect.poll(() => state(page)).toBe('running');
-    await page.locator('#faq').scrollIntoViewIfNeeded();
-    await expect.poll(() => state(page)).toBe('paused');
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await expect.poll(() => state(page)).toBe('running');
-  });
-
-  test('says what it is', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('.particle-caption')).toContainText('Lennard-Jones fluid');
-    await expect(page.locator('.particle-caption')).toContainText('Droplets of 10 or more atoms');
-  });
-
-  test('is a still picture when motion is reduced, with nothing to pause', async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto('/');
-    await expect(page.locator('canvas.particle-field')).toHaveClass(/ready/);
-    await expect.poll(() => state(page)).toBe('still');
-    await expect(page.locator('.particle-toggle')).toBeHidden();
-  });
-
-  test('stops at once when motion is reduced while the page is open', async ({ page }) => {
-    await page.goto('/');
-    await expect.poll(() => state(page)).toBe('running');
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await expect.poll(() => state(page)).toBe('still');
-    await expect(page.locator('.particle-toggle')).toBeHidden();
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await expect.poll(() => state(page)).toBe('running');
-  });
-
-  test('can be paused and played, and the choice is remembered (WCAG 2.2.2)', async ({ page }) => {
-    await page.goto('/');
-    await expect.poll(() => state(page)).toBe('running');
-    await page.getByRole('button', { name: 'Pause animation' }).click();
-    await expect.poll(() => state(page)).toBe('held');
-    await page.reload();
-    await expect(page.locator('canvas.particle-field')).toHaveClass(/ready/);
-    await expect.poll(() => state(page)).toBe('held');
-    await page.getByRole('button', { name: 'Play animation' }).click();
-    await expect.poll(() => state(page)).toBe('running');
-    await page.reload();
-    await expect.poll(() => state(page)).toBe('running');
-  });
-
-  test.describe(() => {
-    // The spacing is added as a style of the test's own, which the page's policy would refuse.
-    test.use({ bypassCSP: true });
-    test('its caption follows the headline in reading order and never overlaps the hero', async ({ page }) => {
+// Before the first paint, the theme script sets the browser's colour to the ground of the theme it chose, from the
+// stored choice or the system's, so the address bar never shows another colour first.
+for (const theme of ['light', 'dark'] as const) {
+  for (const from of ['stored', 'system'] as const) {
+    test(`before paint, the browser's colour is the ${theme} ground (${from} choice)`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: from === 'system' ? theme : theme === 'light' ? 'dark' : 'light' });
+      if (from === 'stored') await page.addInitScript((value) => localStorage.setItem('mdxplora-theme', value), theme);
+      // The first value the page gives the meta tag, recorded as it is set.
+      await page.addInitScript(() => {
+        const seen = window as unknown as { firstThemeColour?: string };
+        new MutationObserver((changes, observer) => {
+          for (const change of changes) {
+            const el = change.target as Element;
+            if (el.matches?.('meta[name="theme-color"]') && change.attributeName === 'content') {
+              seen.firstThemeColour = el.getAttribute('content') ?? '';
+              observer.disconnect();
+              return;
+            }
+          }
+        }).observe(document, { subtree: true, attributes: true, attributeFilter: ['content'] });
+      });
       await page.goto('/');
-      const after = await page.evaluate(() => {
-        const heading = document.querySelector('.hero h1')!;
-        const caption = document.querySelector('.particle-caption')!;
-        return Boolean(heading.compareDocumentPosition(caption) & Node.DOCUMENT_POSITION_FOLLOWING);
-      });
-      expect(after).toBe(true);
-      // With the text spacing WCAG 1.4.12 asks a page to bear.
-      await page.addStyleTag({
-        content:
-          '* { line-height: 1.5 !important; letter-spacing: 0.12em !important; word-spacing: 0.16em !important; }',
-      });
-      const overlap = await page.evaluate(() => {
-        const note = document.querySelector('.particle-note')!.getBoundingClientRect();
-        return [...document.querySelectorAll('.hero-inner > *')].some((el) => {
-          const box = el.getBoundingClientRect();
-          return box.bottom > note.top + 1 && box.top < note.bottom && box.right > note.left && box.left < note.right;
-        });
-      });
-      expect(overlap).toBe(false);
+      const [first, ground, chosen] = await page.evaluate(() => [
+        (window as unknown as { firstThemeColour?: string }).firstThemeColour,
+        getComputedStyle(document.documentElement).getPropertyValue('--bg').trim(),
+        document.documentElement.dataset.theme,
+      ]);
+      expect(chosen).toBe(theme);
+      expect(first).toBe(ground);
     });
+  }
+}
+
+// Nothing moves unless a person moves it: no animation on load or on scrolling, and the hero is the headline and
+// the preview of the platform.
+test('the home page moves only when asked', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForTimeout(500);
+  await page.mouse.wheel(0, 1500);
+  await page.waitForTimeout(300);
+  const running = await page.evaluate(() =>
+    document.getAnimations().map((a) => (a.effect as KeyframeEffect | null)?.target?.toString() ?? 'animation'),
+  );
+  expect(running).toEqual([]);
+  await expect(page.locator('canvas')).toHaveCount(0);
+  const order = await page.evaluate(() => {
+    const heading = document.querySelector('.hero h1')!;
+    const preview = document.querySelector('.hero figure.preview')!;
+    return Boolean(heading.compareDocumentPosition(preview) & Node.DOCUMENT_POSITION_FOLLOWING);
   });
+  expect(order, 'the preview follows the headline').toBe(true);
+  await expect(page.locator('.hero figure.preview figcaption')).toHaveText('A preview of MDXplora as planned.');
 });
 
 test('sign-in appears only when the service address is set, and leads there', async ({ page, isMobile }) => {

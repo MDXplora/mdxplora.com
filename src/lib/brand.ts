@@ -2,16 +2,21 @@
 // the link preview images.
 
 export const colours = {
-  teal: '#22c3b5',
-  blue: '#4c7dff',
-  violet: '#8b6cff',
-  ink: '#070b16',
+  /** MDXplora blue, as on a light ground and behind the icons' white mark. */
+  blue: '#155ad1',
+  /** The same blue, lighter, as on a dark ground. */
+  blueOnDark: '#4c9aff',
+  /** The dark theme's ground. */
+  ground: '#1c1c1d',
+  /** The dark theme's text, strong and muted. */
+  text: '#ececee',
+  textMuted: '#b4b6ba',
+  textSubtle: '#9a9ca1',
 } as const;
 
 /**
  * A droplet: seven atoms in the close-packed arrangement a Lennard-Jones
- * liquid forms, one at the centre and six around it, on a 32 x 32 grid. The
- * same droplets form in the fluid behind the home page.
+ * liquid forms, one at the centre and six around it, on a 32 x 32 grid.
  */
 export const mark = {
   atoms: [
@@ -24,19 +29,24 @@ export const mark = {
 } as const;
 
 /**
- * The mark as SVG elements on a 32 x 32 grid.
+ * The mark as SVG elements on a 32 x 32 grid, in one colour.
  *
- * `radius` rounds the tile's corners (0 for icons the platform rounds itself),
- * and `scale` shrinks the atoms towards the centre, for icons whose edges may be cropped.
+ * With `tile` (the icons), the atoms are white on a solid blue square whose
+ * corners `radius` rounds (0 for icons the platform rounds itself), and
+ * `scale` shrinks the atoms towards the centre, for icons whose edges may be
+ * cropped. Without it (beside the word mark), the atoms alone, in `fill`,
+ * on nothing.
  */
-export function markElements({ id = 'mark', radius = 8, scale = 1 } = {}): string {
-  const inner = mark.atoms.map((a) => `<circle cx="${a.cx}" cy="${a.cy}" r="${a.r}" fill="#fff"/>`).join('');
+export function markElements({
+  tile = true,
+  fill = colours.blue as string,
+  radius = 6,
+  scale = 1,
+}: { tile?: boolean; fill?: string; radius?: number; scale?: number } = {}): string {
+  const inner = mark.atoms
+    .map((a) => `<circle cx="${a.cx}" cy="${a.cy}" r="${a.r}" fill="${tile ? '#fff' : fill}"/>`)
+    .join('');
   const shrink =
     scale === 1 ? inner : `<g transform="translate(16 16) scale(${scale}) translate(-16 -16)">${inner}</g>`;
-  return (
-    `<defs><linearGradient id="${id}" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">` +
-    `<stop offset="0" stop-color="${colours.teal}"/><stop offset="0.55" stop-color="${colours.blue}"/>` +
-    `<stop offset="1" stop-color="${colours.violet}"/></linearGradient></defs>` +
-    `<rect width="32" height="32" rx="${radius}" fill="url(#${id})"/>${shrink}`
-  );
+  return tile ? `<rect width="32" height="32" rx="${radius}" fill="${colours.blue}"/>${shrink}` : shrink;
 }

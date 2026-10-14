@@ -29,9 +29,9 @@ its reports as a build artifact named `lighthouse`.
 
 ## Link preview images
 
-Each page's preview image (`/og/<page>.png`, 1200 x 630) is drawn at build time by `src/lib/card-image.ts`: text from
-`src/data/cards.ts` over a snapshot of the hero's Lennard-Jones fluid, simulated from a fixed seed so every build draws
-the same image. A page's card title must match its headline; a browser test checks it. To preview one, build and open
+Each page's preview image (`/og/<page>.png`, 1200 x 630) is drawn at build time by `src/lib/card-image.ts`: the title
+and summary from `src/data/cards.ts` in plain type on the dark theme's ground, with the droplet in blue beside the name.
+A page's card title must match its headline; a browser test checks it. To preview one, build and open
 `dist/og/home.png`.
 
 The image renderer, satori, asks for `fflate` 0.7.3, which has a moderate advisory; `package.json` gives it 0.7.5, the

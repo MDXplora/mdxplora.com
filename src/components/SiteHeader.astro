@@ -9,7 +9,7 @@ const here = Astro.url.pathname;
 <header class="site-header">
   <div class="bar container">
     <a href="/" class="home" aria-label="MDXplora home">
-      <Logo id="logo-header" />
+      <Logo />
     </a>
 
     <nav aria-label="Site" class="links">
@@ -40,7 +40,9 @@ const here = Astro.url.pathname;
   <div id="mobile-menu" class="mobile-menu" hidden>
     <nav aria-label="Site" class="container">
       {nav.map((item) => (
-        <a href={item.href}>{item.label}</a>
+        <a href={item.href} aria-current={here.startsWith(item.href) ? 'page' : undefined}>
+          {item.label}
+        </a>
       ))}
       <a href="/contact/?topic=early-access">Join early access</a>
       {site.appUrl && <a href={site.appUrl}>Sign in</a>}
@@ -64,37 +66,16 @@ const here = Astro.url.pathname;
     toggle?.focus();
   });
   matchMedia('(min-width: 861px)').addEventListener('change', (wide) => wide.matches && show(false));
-  const header = document.querySelector('.site-header');
-  const onScroll = () => header?.classList.toggle('scrolled', window.scrollY > 8);
-  onScroll();
-  addEventListener('scroll', onScroll, { passive: true });
 </script>
 
 <style>
+  /* Solid, on the page's own ground, with a hairline beneath: what scrolls under it is hidden, not blurred. */
   .site-header {
     position: sticky;
     top: 0;
     z-index: 50;
-    background: color-mix(in srgb, var(--bg) 72%, transparent);
-    backdrop-filter: saturate(160%) blur(14px);
-    border-bottom: 1px solid transparent;
-    transition: border-color 0.2s ease;
-  }
-  /* For Safari before 18. In a rule of its own: the build keeps only one of
-     two such lines in the same rule. */
-  @supports (-webkit-backdrop-filter: none) {
-    .site-header {
-      -webkit-backdrop-filter: saturate(160%) blur(14px);
-    }
-  }
-  /* A browser without color-mix() would otherwise draw no background at all. */
-  @supports not (background: color-mix(in srgb, red 50%, transparent)) {
-    .site-header {
-      background: var(--bg);
-    }
-  }
-  .site-header.scrolled {
-    border-bottom-color: var(--border);
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
   }
   .bar {
     height: var(--header-height);
@@ -113,13 +94,16 @@ const here = Astro.url.pathname;
   .links a {
     color: var(--fg-muted);
     text-decoration: none;
-    font-size: 0.925rem;
+    font-size: 0.9375rem;
     font-weight: 500;
-    transition: color 0.15s ease;
+    transition: color 0.12s ease;
   }
-  .links a:hover,
-  .links a[aria-current='page'] {
+  .links a:hover {
     color: var(--fg);
+  }
+  .links a[aria-current='page'],
+  .mobile-menu a[aria-current='page'] {
+    color: var(--link);
   }
   .actions {
     margin-inline-start: auto;
@@ -130,9 +114,9 @@ const here = Astro.url.pathname;
   .signin {
     color: var(--fg-muted);
     text-decoration: none;
-    font-size: 0.925rem;
+    font-size: 0.9375rem;
     font-weight: 500;
-    transition: color 0.15s ease;
+    transition: color 0.12s ease;
   }
   .signin:hover {
     color: var(--fg);
@@ -156,7 +140,7 @@ const here = Astro.url.pathname;
     width: 16px;
     height: 1.5px;
     background: currentColor;
-    transition: transform 0.2s ease;
+    transition: transform 0.15s ease;
   }
   .menu-toggle[aria-expanded='true'] span:first-child {
     transform: translateY(3.25px) rotate(45deg);

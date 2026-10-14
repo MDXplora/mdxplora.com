@@ -28,7 +28,6 @@ const steps = [
 >
   <section class="page-hero">
     <div class="container">
-      <span class="eyebrow">Compute</span>
       <h1>Our GPUs, or yours.</h1>
       <p class="lead">
         No GPU to own and nothing to install. Connecting the machines you do have, and choosing for each study where it
@@ -49,18 +48,18 @@ const steps = [
   <section class="section">
     <div class="container grid-3">
       <h2 class="visually-hidden">Why run studies on MDXplora</h2>
-      <article class="card">
+      <article class="entry">
         <h3>Nothing to install</h3>
         <p>A browser will be enough: no environment to build and no drivers to match to a CUDA version.</p>
       </article>
-      <article class="card">
+      <article class="entry">
         <h3>The same study anywhere</h3>
         <p>
           A study is one Config. It will run with the same settings on our GPUs and on yours, and it can be downloaded
           whole, with its data and its record, whenever you want it.
         </p>
       </article>
-      <article class="card">
+      <article class="entry">
         <h3>Chosen per study</h3>
         <p>
           Our GPUs when you have none, and your own workstation or cluster when you do, once the connector is ready.
@@ -72,7 +71,6 @@ const steps = [
   <section class="section">
     <div class="container">
       <div class="section-head">
-        <span class="eyebrow">Your own compute, planned</span>
         <h2>Our interface, your machines.</h2>
         <p>
           The connector is not available yet. It is designed so that your machine asks MDXplora for work, the way a mail
@@ -81,7 +79,7 @@ const steps = [
       </div>
       <ol class="steps">
         {steps.map((s, i) => (
-          <li class="card">
+          <li class="entry">
             <span class="step-number">{i + 1}</span>
             <h3>{s.title}</h3>
             <p>{s.text}</p>
@@ -108,15 +106,17 @@ const steps = [
   </section>
 
   <section class="section">
-    <div class="container closing">
-      <h2>Tell us what you would run.</h2>
-      <p>
-        Early access is opening to a small number of groups first. Tell us about your systems and your compute, and we
-        will be in touch.
-      </p>
-      <a class="button button-primary" href="/contact/?topic=early-access">
-        Join early access
-      </a>
+    <div class="container">
+      <div class="closing">
+        <h2>Tell us what you would run.</h2>
+        <p>
+          Early access is opening to a small number of groups first. Tell us about your systems and your compute, and we
+          will be in touch.
+        </p>
+        <a class="button button-primary" href="/contact/?topic=early-access">
+          Join early access
+        </a>
+      </div>
     </div>
   </section>
 </Base>
@@ -134,43 +134,25 @@ const steps = [
     padding: 0;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 1.25rem;
+    gap: 2rem 1.5rem;
   }
-  .step-number {
-    display: inline-grid;
-    place-items: center;
-    width: 2rem;
-    height: 2rem;
-    margin-bottom: 1.25rem;
-    border-radius: 50%;
-    background: var(--badge-gradient);
-    color: #fff;
-    font-weight: 700;
-    font-size: 0.9rem;
+  .steps h3 {
+    margin-top: 0.5rem;
   }
   .notes {
-    margin-top: 3rem;
-    gap: 2.5rem;
-  }
-  .notes h3 {
-    font-size: 1.15rem;
-    letter-spacing: -0.015em;
+    margin-top: clamp(40px, 6vw, 64px);
   }
   .notes p {
     margin-top: 0.5rem;
     color: var(--fg-muted);
   }
   .closing {
-    text-align: center;
     max-width: 40rem;
   }
-  .closing h2 {
-    font-size: clamp(2rem, 4vw, 2.75rem);
-  }
   .closing p {
-    margin: 1rem auto 2rem;
+    margin: 1rem 0 2rem;
     color: var(--fg-muted);
-    font-size: 1.1rem;
+    font-size: 1.0625rem;
   }
   @media (max-width: 960px) {
     .steps {
