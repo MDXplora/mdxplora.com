@@ -53,7 +53,7 @@ async function resolved(page: Page, names: string[]): Promise<Record<string, num
 }
 
 const grounds = ['--bg', '--bg-raised', '--bg-sunken', '--surface', '--surface-hover'];
-const text = ['--fg', '--fg-muted', '--fg-subtle', '--link', '--accent', '--positive', '--danger'];
+const text = ['--fg', '--fg-muted', '--fg-subtle', '--link', '--accent', '--positive', '--warning', '--danger'];
 
 for (const theme of ['dark', 'light']) {
   test(`in the ${theme} theme, text and the accent keep 4.5:1 on every ground, and form fields 3:1`, async ({
@@ -151,6 +151,88 @@ test('the header is solid, on the page ground, with a hairline beneath and nothi
   const css = (await Promise.all(sheets.map(async (href) => (await request.get(href)).text()))).join('\n');
   expect(css).not.toContain('backdrop-filter');
 });
+
+// Green, amber and red say something passed, stopped or is wrong, so they are drawn only on the elements that say so:
+// the preview's "Validated", the stopped run on the home page and a form field to correct. The colours of both themes
+// are looked for, since the preview keeps its dark colours in the light theme.
+const statusElements: Record<string, string[]> = {
+  '--positive': ['.valid'],
+  '--warning': ['.refusal', '.refusal-mark'],
+  '--danger': ['[aria-invalid="true"]'],
+};
+
+test('status colours appear only where they say something', async ({ page }) => {
+  for (const path of pages) {
+    for (const theme of ['dark', 'light']) {
+      await page.addInitScript((value) => localStorage.setItem('mdxplora-theme', value), theme);
+      await page.goto(path);
+      const found = await page.evaluate((statusElements) => {
+        const root = document.documentElement;
+        const chosen = root.dataset.theme;
+        const probe = document.createElement('span');
+        document.body.append(probe);
+        const status = new Map<string, string>();
+        for (const theme of ['dark', 'light']) {
+          root.dataset.theme = theme;
+          for (const name of Object.keys(statusElements)) {
+            probe.style.color = `var(${name})`;
+            status.set(getComputedStyle(probe).color, name);
+          }
+        }
+        root.dataset.theme = chosen;
+        probe.remove();
+        const out: string[] = [];
+        for (const el of document.querySelectorAll('body *')) {
+          for (const pseudo of [null, '::before', '::after']) {
+            const style = getComputedStyle(el, pseudo);
+            if (pseudo && style.content === 'none') continue;
+            const used = [
+              style.color,
+              style.backgroundColor,
+              ...(['Top', 'Right', 'Bottom', 'Left'] as const)
+                .filter((side) => parseFloat(style[`border${side}Width`]) > 0)
+                .map((side) => style[`border${side}Color`]),
+              ...(style.outlineStyle !== 'none' ? [style.outlineColor] : []),
+            ];
+            for (const colour of used) {
+              const name = status.get(colour);
+              if (name && !statusElements[name].some((selector) => el.matches(selector)))
+                out.push(`${el.tagName.toLowerCase()}.${el.className}${pseudo ?? ''}: ${name}`);
+            }
+          }
+        }
+        return [...new Set(out)];
+      }, statusElements);
+      expect(found, `${path} in ${theme}`).toEqual([]);
+    }
+  }
+});
+
+for (const theme of ['dark', 'light']) {
+  test(`in the ${theme} theme, the stopped run has an amber edge and mark, and its words in the text's colours`, async ({
+    page,
+  }) => {
+    await page.addInitScript((value) => localStorage.setItem('mdxplora-theme', value), theme);
+    await page.goto('/');
+    const token = await resolved(page, ['--warning', '--fg', '--fg-muted']);
+    const refusal = page.locator('.refusal');
+    const [edges, widths, mark, words] = await refusal.evaluate((box) => {
+      const own = getComputedStyle(box);
+      const sides = ['Top', 'Right', 'Bottom', 'Left'] as const;
+      return [
+        sides.map((side) => own[`border${side}Color`]),
+        sides.map((side) => own[`border${side}Width`]),
+        getComputedStyle(box.querySelector('.refusal-mark')!).backgroundColor,
+        [...box.querySelectorAll('.refusal-head, p')].map((el) => getComputedStyle(el).color),
+      ];
+    });
+    for (const edge of edges) expect(colours(edge)[0], 'the edge').toEqual(token['--warning']);
+    expect(widths).toEqual(['1px', '1px', '1px', '1px']);
+    expect(colours(mark)[0], 'the mark').toEqual(token['--warning']);
+    for (const colour of words) expect([token['--fg'], token['--fg-muted']]).toContainEqual(colours(colour)[0]);
+    await expect(refusal).toContainText('Setup stopped');
+  });
+}
 
 // WCAG 2.2 SC 2.4.11, which axe does not check: going back up a page with Shift+Tab, no focused element ends up
 // under the sticky header.

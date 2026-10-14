@@ -5,7 +5,9 @@
  * everywhere. The grounds, borders and greys are those of the software the
  * platform computes with, untinted; MDXplora's own colour is one blue
  * (--accent), used only for links, the primary action, the focus ring and
- * the current page. Text colours keep at least 4.5:1 contrast against every
+ * the current page. Green, amber and red (--positive, --warning, --danger)
+ * are the software's status colours and mark only a state: something passed,
+ * something stopped, something is wrong. Text colours keep at least 4.5:1 contrast against every
  * ground of their theme, and so does the text on a filled blue button (WCAG
  * AA). A form field's edge keeps 3:1 against the card it sits on and its own
  * fill (--field-border, WCAG 1.4.11). The accessibility tests check all of it.
@@ -43,6 +45,7 @@
   --fg-muted: #b4b6ba;
   --fg-subtle: #9a9ca1;
   --positive: #67e8a3;
+  --warning: #ffb86b;
   --danger: #ff7272;
   --accent: #4c9aff;
   --accent-hover: #6aacff;
@@ -65,6 +68,7 @@
   --fg-muted: #4a4a48;
   --fg-subtle: #696965;
   --positive: #1b7a45;
+  --warning: #a65300;
   --danger: #c0262d;
   --accent: #155ad1;
   --accent-hover: #104ab0;
@@ -88,6 +92,7 @@
     --fg-muted: #4a4a48;
     --fg-subtle: #696965;
     --positive: #1b7a45;
+    --warning: #a65300;
     --danger: #c0262d;
     --accent: #155ad1;
     --accent-hover: #104ab0;
