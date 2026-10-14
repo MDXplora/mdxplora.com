@@ -746,6 +746,20 @@ test('the home page moves only when asked', async ({ page }) => {
   await expect(page.locator('.hero figure.preview figcaption')).toHaveText('A preview of MDXplora as planned.');
 });
 
+test('"Your data stays yours" sits under the text about compute, not alone in a column', async ({ page }) => {
+  await page.goto('/');
+  const section = page.locator('section', { has: page.getByRole('heading', { name: 'Our GPUs, or yours.' }) });
+  const [head, owned] = await Promise.all(
+    ['.section-head', '.owned'].map((part) =>
+      section.locator(part).evaluate((el) => el.getBoundingClientRect().toJSON()),
+    ),
+  );
+  await expect(section.locator('.owned h3')).toHaveText('Your data stays yours');
+  expect(Math.abs(owned.left - head.left), 'in line with the text').toBeLessThanOrEqual(1);
+  expect(owned.top, 'below the text').toBeGreaterThanOrEqual(head.bottom);
+  expect(owned.width, 'no wider than the text').toBeLessThanOrEqual(head.width + 1);
+});
+
 test('sign-in appears only when the service address is set, and leads there', async ({ page, isMobile }) => {
   await page.goto('/');
   const everywhere = page.locator('a', { hasText: /^Sign in$/ });
