@@ -428,6 +428,20 @@ test('an unknown address gets the not-found page, which claims no address of its
   await expect(page.locator('meta[property="og:url"]')).toHaveCount(0);
 });
 
+test('on a short page the footer reaches the bottom of the window', async ({ page }) => {
+  for (const height of [720, 1200]) {
+    await page.setViewportSize({ width: 1280, height });
+    await page.goto('/no-such-page/');
+    const [bottom, window, end] = await page.evaluate(() => [
+      document.querySelector('.site-footer')!.getBoundingClientRect().bottom + scrollY,
+      innerHeight,
+      document.documentElement.scrollHeight,
+    ]);
+    expect(bottom, `at ${height} px: the footer ends at the page's end`).toBeCloseTo(end, 0);
+    expect(bottom, `at ${height} px: and at or below the window's`).toBeGreaterThanOrEqual(window - 0.5);
+  }
+});
+
 test('the phone menu closes with Escape, back to its button, and when the window widens', async ({
   page,
   isMobile,
