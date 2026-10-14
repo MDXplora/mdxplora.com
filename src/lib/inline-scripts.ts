@@ -12,12 +12,14 @@ export const hashOf = (source: string) => `sha256-${createHash('sha256').update(
  * Applies the stored or preferred theme before the first paint, so a page never
  * flashes the wrong one, and makes the browser's own chrome (address bar,
  * status bar) follow it: both theme-color tags, one for each system scheme,
- * are given the chosen theme's ground.
+ * are given the chosen theme's ground. It also deletes the setting an earlier
+ * version of the site stored for pausing its animation, which is gone.
  */
 export const themeScript = `(() => {
   let stored = '';
   try {
     stored = localStorage.getItem('mdxplora-theme') || '';
+    localStorage.removeItem('mdxplora-fluid');
   } catch {}
   const theme =
     stored === 'light' || stored === 'dark'

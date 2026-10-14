@@ -408,6 +408,18 @@ test('the privacy page names everything the site keeps in the browser', async ({
   for (const words of Object.values(described)) await expect(page.locator('.prose')).toContainText(words);
 });
 
+test('the setting an earlier version stored for its animation is deleted, and the theme kept', async ({ page }) => {
+  await page.goto('/privacy/');
+  await page.evaluate(() => {
+    localStorage.setItem('mdxplora-fluid', 'paused');
+    localStorage.setItem('mdxplora-theme', 'light');
+  });
+  await page.goto('/');
+  const kept = await page.evaluate(() => Object.keys(localStorage).sort());
+  expect(kept).toEqual(['mdxplora-theme']);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+});
+
 test('an unknown address gets the not-found page, which claims no address of its own', async ({ page }) => {
   const response = await page.goto('/no-such-page/');
   expect(response?.status()).toBe(404);
