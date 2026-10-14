@@ -11,7 +11,8 @@ export const hashOf = (source: string) => `sha256-${createHash('sha256').update(
 /**
  * Applies the stored or preferred theme before the first paint, so a page never
  * flashes the wrong one, and makes the browser's own chrome (address bar,
- * status bar) follow it.
+ * status bar) follow it: both theme-color tags, one for each system scheme,
+ * are given the chosen theme's ground.
  */
 export const themeScript = `(() => {
   let stored = '';
@@ -25,9 +26,8 @@ export const themeScript = `(() => {
         ? 'light'
         : 'dark';
   document.documentElement.dataset.theme = theme;
-  document
-    .querySelector('meta[name="theme-color"]')
-    ?.setAttribute('content', theme === 'light' ? '#faf9f5' : '#1c1c1d');
+  for (const meta of document.querySelectorAll('meta[name="theme-color"]'))
+    meta.setAttribute('content', theme === 'light' ? '#faf9f5' : '#1c1c1d');
 })();`;
 
 /**

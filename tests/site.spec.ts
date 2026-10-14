@@ -547,6 +547,22 @@ test.describe('without JavaScript', () => {
     });
   }
 
+  for (const scheme of ['light', 'dark'] as const) {
+    test(`the browser's own colour is the ${scheme} ground when the system is ${scheme}`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto('/');
+      // The first tag whose media query holds is the one the browser uses.
+      const [used, ground] = await page.evaluate(() => [
+        [...document.querySelectorAll('meta[name="theme-color"]')]
+          .find((meta) => matchMedia(meta.getAttribute('media') || 'all').matches)
+          ?.getAttribute('content'),
+        getComputedStyle(document.documentElement).getPropertyValue('--bg').trim(),
+      ]);
+      expect(ground).toBe(scheme === 'light' ? '#faf9f5' : '#1c1c1d');
+      expect(used).toBe(ground);
+    });
+  }
+
   test('the browser checks the form before it is posted', async ({ page }) => {
     await page.goto('/contact/');
     expect(await page.locator('form.form').evaluate((form: HTMLFormElement) => form.noValidate)).toBe(false);
@@ -684,12 +700,14 @@ test('the droplet reads as seven atoms in the header, the footer and the browser
 
 test("the browser's own colour follows the theme", async ({ page }) => {
   await page.goto('/');
-  const colour = () => page.locator('meta[name="theme-color"]').getAttribute('content');
+  // Every theme-color tag, whichever scheme the system is in.
+  const colours = () =>
+    page.locator('meta[name="theme-color"]').evaluateAll((metas) => metas.map((m) => m.getAttribute('content')));
   const background = () =>
     page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--bg').trim());
-  expect(await colour()).toBe(await background());
+  expect(await colours()).toEqual([await background(), await background()]);
   await page.locator('.theme-toggle').first().click();
-  expect(await colour()).toBe(await background());
+  expect(await colours()).toEqual([await background(), await background()]);
 });
 
 // Before the first paint, the theme script sets the browser's colour to the ground of the theme it chose, from the
@@ -714,13 +732,18 @@ for (const theme of ['light', 'dark'] as const) {
         }).observe(document, { subtree: true, attributes: true, attributeFilter: ['content'] });
       });
       await page.goto('/');
-      const [first, ground, chosen] = await page.evaluate(() => [
+      const [first, ground, chosen, used] = await page.evaluate(() => [
         (window as unknown as { firstThemeColour?: string }).firstThemeColour,
         getComputedStyle(document.documentElement).getPropertyValue('--bg').trim(),
         document.documentElement.dataset.theme,
+        // The tag the browser uses: the first whose media query holds.
+        [...document.querySelectorAll('meta[name="theme-color"]')]
+          .find((meta) => matchMedia(meta.getAttribute('media') || 'all').matches)
+          ?.getAttribute('content'),
       ]);
       expect(chosen).toBe(theme);
       expect(first).toBe(ground);
+      expect(used, 'the tag the browser uses').toBe(ground);
     });
   }
 }
