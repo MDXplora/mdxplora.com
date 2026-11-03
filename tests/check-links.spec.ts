@@ -350,7 +350,7 @@ test('structured data: a contentUrl or embedUrl is the own address of a node, bu
   );
 });
 
-test('structured data: an empty or blank url is no address, so the @id is checked', () => {
+test('structured data: a url that is empty once stripped is no address, so the @id is checked', () => {
   const run = checkLinks({
     'index.html': html(
       '<h1 id="top">Home</h1>',
@@ -360,11 +360,12 @@ test('structured data: an empty or blank url is no address, so the @id is checke
         url: '/',
         isBasedOn: { '@id': '/missing-empty/', url: '' },
         relatedLink: { '@id': '/missing-blank/', url: '   ' },
+        significantLink: { '@id': '/missing-controls/', url: '\u0001\t\u001f ' },
       }),
     ),
   });
   expect(run.status, run.output).toBe(1);
-  expect(run.reported).toEqual(['/missing-blank/', '/missing-empty/']);
+  expect(run.reported).toEqual(['/missing-blank/', '/missing-controls/', '/missing-empty/']);
 });
 
 test('structured data: a placeholder left in an address is still reported, and the @context is not read', () => {
@@ -493,7 +494,7 @@ test('structured data: the urlTemplate of an EntryPoint is its own address, so i
           action('http://schema.org/EntryPoint', '/gone-http/', '/about/{?q}'),
           action(['Thing', 'EntryPoint'], '/gone-types/', '?q={q}'),
           action('EntryPoint', '/gone-off-site/', 'https://example.org/search?q={q}'),
-          // A blank urlTemplate, or one on a node of another type, is not its own address.
+          // A urlTemplate empty once stripped, or one on a node of another type, is not its own address.
           action('EntryPoint', '/missing-blank/', '  '),
           action('SearchAction', '/missing-action/', '/about/?q={q}'),
         ],

@@ -118,10 +118,11 @@ const ADDRESS_KEYS = new Set([
 const isAddressKey = (key) => Boolean(key) && (ADDRESS_KEYS.has(key) || key.endsWith('Url'));
 
 // Whether a node gives an address of its own, so that its @id is only its name. A url, contentUrl or embedUrl that is a
-// string, and not empty or blank, is the node's own address, and so is such a urlTemplate on an EntryPoint: a node
-// whose @type is or includes EntryPoint, also written as https://schema.org/EntryPoint or http://schema.org/EntryPoint.
-// The urlTemplate is still checked as a template (see templateBase). Others, such as the node's image, logo, sameAs or
-// license, are addresses of something else, as is a urlTemplate on a node of any other type.
+// string, and not empty once stripped (see stripped), is the node's own address, and so is such a urlTemplate on an
+// EntryPoint: a node whose @type is or includes EntryPoint, also written as https://schema.org/EntryPoint or
+// http://schema.org/EntryPoint. The urlTemplate is still checked as a template (see templateBase). Others, such as the
+// node's image, logo, sameAs or license, are addresses of something else, as is a urlTemplate on a node of any other
+// type.
 const OWN_ADDRESS_KEYS = ['url', 'contentUrl', 'embedUrl'];
 const ENTRY_POINT = new Set(['EntryPoint', 'https://schema.org/EntryPoint', 'http://schema.org/EntryPoint']);
 const isFilled = (value) => typeof value === 'string' && stripped(value) !== '';
@@ -263,10 +264,10 @@ function readPage(file) {
         } catch {
           problems.push('structured data that is not valid JSON');
         }
-        // One at a time: spreading a long list into push overflows the stack.
+        // One at a time: spreading a long list into push overflows the stack. Data that is not valid JSON is left
+        // undefined, which holds no address.
         try {
-          if (data !== undefined)
-            for (const [written, link] of addresses(data)) found.push([written, link, noscriptOnly]);
+          for (const [written, link] of addresses(data)) found.push([written, link, noscriptOnly]);
         } catch (error) {
           if (!(error instanceof RangeError)) throw error;
           problems.push('structured data nested too deep to read');
