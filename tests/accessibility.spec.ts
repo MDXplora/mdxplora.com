@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { expectExactly, expectText, masked, textOf } from './lib/operator-name';
 
 // Every page, in both themes, against WCAG 2.2 level AA as far as a machine can check it.
 const pages = ['/', '/compute/', '/services/', '/early-access/', '/contact/', '/privacy/', '/no-such-page/'];
@@ -12,8 +13,8 @@ for (const theme of ['dark', 'light']) {
       const { violations } = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'])
         .analyze();
-      const found = violations.map(
-        (v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`,
+      const found = violations.map((v) =>
+        masked(`${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
       );
       expect(found).toEqual([]);
     });
@@ -121,7 +122,10 @@ test('no page draws a gradient, a glow or a shadow behind its text', async ({ pa
             : [];
         }),
       );
-      expect(found, `${path} in ${theme}`).toEqual([]);
+      expect(
+        found.map((one) => masked(one)),
+        `${path} in ${theme}`,
+      ).toEqual([]);
     }
   }
 });
@@ -151,7 +155,7 @@ test('the header is solid, on the page ground, with a hairline beneath and nothi
     .locator('link[rel="stylesheet"]')
     .evaluateAll((links) => links.map((l) => (l as HTMLLinkElement).href));
   const css = (await Promise.all(sheets.map(async (href) => (await request.get(href)).text()))).join('\n');
-  expect(css).not.toContain('backdrop-filter');
+  expectText(css, 'backdrop-filter', 'the style sheets', false);
 });
 
 // Green, amber and red say something passed, stopped or is wrong, so they are drawn only on the elements that say so:
@@ -227,7 +231,10 @@ test('status colours appear only where they say something', async ({ page }) => 
         }
         return [...new Set(out)];
       }, statusElements);
-      expect(found, `${path} in ${theme}`).toEqual([]);
+      expect(
+        found.map((one) => masked(one)),
+        `${path} in ${theme}`,
+      ).toEqual([]);
     }
   }
 });
@@ -254,7 +261,7 @@ for (const theme of ['dark', 'light']) {
     expect(widths).toEqual(['1px', '1px', '1px', '1px']);
     expect(colours(mark)[0], 'the mark').toEqual(token['--warning']);
     for (const colour of words) expect([token['--fg'], token['--fg-muted']]).toContainEqual(colours(colour)[0]);
-    await expect(refusal).toContainText('Setup stopped');
+    expectText(await textOf(refusal), 'Setup stopped', 'the stopped run');
   });
 }
 
@@ -276,7 +283,7 @@ async function hiddenUnderHeader(page: Page, path: string): Promise<string[]> {
       const box = el.getBoundingClientRect();
       return { top: box.top, under: header.getBoundingClientRect().bottom, name: el.outerHTML.slice(0, 80) };
     });
-    if (where && where.top < where.under - 1) hidden.push(`${where.name} (top ${Math.round(where.top)})`);
+    if (where && where.top < where.under - 1) hidden.push(masked(`${where.name} (top ${Math.round(where.top)})`));
   }
   return hidden;
 }
@@ -336,7 +343,7 @@ for (const theme of ['dark', 'light']) {
     const current = page.locator(`${shown} a[aria-current="page"]`);
     await expect(current).toHaveCount(1);
     await expect(current).toBeVisible();
-    await expect(current).toHaveText('Compute');
+    expectExactly(await textOf(current), 'Compute', 'the current page');
     // Both navigations, the one on screen and the other, mark the same page in the same colour.
     for (const nav of ['.site-header .links', '#mobile-menu nav']) {
       const colour = await page.locator(`${nav} a[aria-current="page"]`).evaluate((a) => getComputedStyle(a).color);
@@ -354,7 +361,7 @@ test('the phone menu says which page is open', async ({ page }) => {
     await page.goto(path);
     const current = page.locator('#mobile-menu a[aria-current="page"]');
     await expect(current, path).toHaveCount(1);
-    await expect(current, path).toHaveText(label);
+    expectExactly(await textOf(current), label, `the current page on ${path}`);
   }
   await page.goto('/privacy/');
   await expect(page.locator('#mobile-menu a[aria-current]')).toHaveCount(0);
@@ -382,7 +389,10 @@ test('every button has the controls’ corners', async ({ page }) => {
           : [`${el.tagName.toLowerCase()}.${el.getAttribute('class') ?? ''}: ${corners.join(' ')}`];
       });
     });
-    expect(found, path).toEqual([]);
+    expect(
+      found.map((one) => masked(one)),
+      path,
+    ).toEqual([]);
   }
 });
 
@@ -419,6 +429,9 @@ test('no heading has a label in capitals or spaced letters above it', async ({ p
       }
       return out;
     });
-    expect(found, path).toEqual([]);
+    expect(
+      found.map((one) => masked(one)),
+      path,
+    ).toEqual([]);
   }
 });

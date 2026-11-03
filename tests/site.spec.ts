@@ -1,9 +1,36 @@
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
+import { brotliCompressSync, brotliDecompressSync, deflateSync, inflateSync } from 'node:zlib';
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { Resvg } from '@resvg/resvg-js';
+import { parse, type DefaultTreeAdapterTypes } from 'parse5';
+import ts from 'typescript';
+import {
+  FAMILY,
+  GIVEN,
+  OPERATOR,
+  SHORT,
+  expectExactly,
+  expectText,
+  masked,
+  namedIn,
+  namedInBytes,
+  textOf,
+  whereNamed,
+} from './lib/operator-name';
 
 const pages = ['/', '/compute/', '/services/', '/early-access/', '/contact/', '/privacy/'];
 
@@ -21,7 +48,10 @@ for (const path of pages) {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow, 'no horizontal scrolling').toBeLessThanOrEqual(0);
-    expect(errors).toEqual([]);
+    expect(
+      errors.map((error) => masked(error)),
+      path,
+    ).toEqual([]);
   });
 }
 
@@ -39,21 +69,26 @@ test('every page carries the security policy and nothing on it breaks the policy
     await page.goto(path);
     const policy = await page.locator('meta[http-equiv="content-security-policy"]').getAttribute('content');
     for (const directive of ["default-src 'self'", "object-src 'none'", "base-uri 'self'", 'script-src ']) {
-      expect(policy, path).toContain(directive);
+      expectText(policy, directive, `the policy of ${path}`);
     }
-    expect(policy, `${path} allows no inline code by blanket permission`).not.toContain('unsafe-inline');
+    expectText(
+      policy,
+      'unsafe-inline',
+      `the policy of ${path}, which allows no inline code by blanket permission,`,
+      false,
+    );
     // Every inline script the page runs is allowed by its own hash, wherever it sits in the page.
     const inline = await page.locator('script:not([src]):not([type="application/ld+json"])').allTextContents();
     for (const source of inline) {
       const hash = `'sha256-${createHash('sha256').update(source).digest('base64')}'`;
-      expect(policy, `${path}: ${source.slice(0, 60)}`).toContain(hash);
+      expectText(policy, hash, masked(`the policy of ${path}, for ${source.slice(0, 60)},`));
     }
     await expect(page.locator('meta[name="referrer"]')).toHaveAttribute('content', 'strict-origin-when-cross-origin');
   }
   // Give late scripts (the form) a moment to run.
   await page.goto('/');
   await page.waitForTimeout(500);
-  expect(violations).toEqual([]);
+  expect(violations.map((violation) => masked(violation))).toEqual([]);
 });
 
 test('visits are counted only when configured, only on the live site, and the privacy page says which', async ({
@@ -66,21 +101,23 @@ test('visits are counted only when configured, only on the live site, and the pr
   const policy = (await page.locator('meta[http-equiv="content-security-policy"]').getAttribute('content')) ?? '';
   const prose = page.locator('.prose');
 
+  // The privacy page names the operator, so its text is never printed.
+  const said = await textOf(prose);
   if ((await loader.count()) === 0) {
-    expect(policy).not.toContain('cloudflareinsights');
-    await expect(prose).toContainText('runs no analytics');
-    await expect(prose).not.toContainText('Visit counts');
+    expectText(policy, 'cloudflareinsights', 'the policy', false);
+    expectText(said, 'runs no analytics', 'the privacy page');
+    expectText(said, 'Visit counts', 'the privacy page', false);
   } else {
     await expect(loader).toHaveAttribute('data-host', 'mdxplora.com');
-    expect(policy).toContain('https://static.cloudflareinsights.com/beacon.min.js');
-    expect(policy).toMatch(/connect-src [^;]*https:\/\/cloudflareinsights\.com/);
-    await expect(prose).toContainText('Visit counts');
-    await expect(prose).not.toContainText('runs no analytics');
+    expectText(policy, 'https://static.cloudflareinsights.com/beacon.min.js', 'the policy');
+    expectText(policy, /connect-src [^;]*https:\/\/cloudflareinsights\.com/, 'the policy');
+    expectText(said, 'Visit counts', 'the privacy page');
+    expectText(said, 'runs no analytics', 'the privacy page', false);
   }
   // This test serves the site from localhost, which must never be counted.
   await page.goto('/');
   await page.waitForTimeout(300);
-  expect(beaconRequests).toEqual([]);
+  expect(beaconRequests.map((address) => masked(address))).toEqual([]);
   if ((await loader.count()) === 0) return;
 
   // On the live domain (answered here from this build), the counter loads and the policy lets it report.
@@ -109,8 +146,8 @@ test('each page has its own link preview image, matching its headline', async ({
     const alt = await page.locator('meta[property="og:image:alt"]').getAttribute('content');
     const twitterAlt = await page.locator('meta[name="twitter:image:alt"]').getAttribute('content');
     const headline = (await page.locator('h1').first().innerText()).replace(/\s+/g, ' ').trim();
-    expect(alt, path).toBe(`MDXplora: ${headline}`);
-    expect(twitterAlt, path).toBe(alt);
+    expectExactly(alt, `MDXplora: ${headline}`, `the link preview image's alt text on ${path}`);
+    expectExactly(twitterAlt, alt ?? '', `the alt text for X on ${path}`);
 
     // The image is addressed on the live domain; fetch the same path from this build.
     const response = await request.get(new URL(image!).pathname);
@@ -139,65 +176,150 @@ test('a page that describes the service says it is planned', async ({ page }) =>
     });
     const description = (await page.locator('meta[name="description"]').getAttribute('content')) ?? '';
     if (describesCompute.test(text)) {
-      expect(text, path).toContain(status);
+      expectText(text, status, path);
     }
     for (const said of [text, description]) {
-      expect(said, path).not.toMatch(availableToday);
-      expect(said, path).not.toMatch(/early access is open\b|\bis in early access\b|in one command/i);
+      expectText(said, availableToday, path, false);
+      expectText(said, /early access is open\b|\bis in early access\b|in one command/i, path, false);
       // A study on the service is planned, and MDXplora validates its Config rather than checking it.
-      expect(said, path).not.toMatch(/\bstudy is reproducible\b|\bchecked before it runs\b/i);
+      expectText(said, /\bstudy is reproducible\b|\bchecked before it runs\b/i, path, false);
     }
   }
 });
 
+// The title and text each link preview image draws, read from the source as TypeScript reads it, since the browser
+// tests cannot import it (it reads the build's settings). Each card is a string, or a property of `site` given as one
+// in src/data/site.ts; a card written in any other way fails here, so none goes unread.
+const CARD = 'each card is exactly { slug, title, text }, each a string or, for the title or text, site.<key>';
+function drawnCards(
+  cardsFile = readFileSync('src/data/cards.ts', 'utf8'),
+  siteFile = readFileSync('src/data/site.ts', 'utf8'),
+): { slug: string; title: string; text: string }[] {
+  // The value a file declares for a name at its top level, without `as const` or `satisfies`.
+  const declared = (source: string, name: string) => {
+    let value = ts
+      .createSourceFile(`${name}.ts`, source, ts.ScriptTarget.Latest, true)
+      .statements.filter(ts.isVariableStatement)
+      .flatMap((statement) => statement.declarationList.declarations)
+      .find((declaration) => ts.isIdentifier(declaration.name) && declaration.name.text === name)?.initializer;
+    while (
+      value &&
+      (ts.isAsExpression(value) || ts.isSatisfiesExpression(value) || ts.isParenthesizedExpression(value))
+    )
+      value = value.expression;
+    return value;
+  };
+  const fields = (node: ts.Node | undefined) =>
+    new Map(
+      node && ts.isObjectLiteralExpression(node)
+        ? node.properties.map((property) => [
+            ts.isPropertyAssignment(property) && (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name))
+              ? property.name.text
+              : property.getText(),
+            ts.isPropertyAssignment(property) ? property.initializer : undefined,
+          ])
+        : [],
+    );
+  const site = fields(declared(siteFile, 'site'));
+  const cards = declared(cardsFile, 'cards');
+  if (!cards || !ts.isArrayLiteralExpression(cards)) throw new Error('src/data/cards.ts declares its cards as a list');
+  const string = (node: ts.Expression | undefined, where: string): string => {
+    if (node && (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))) return node.text;
+    if (node && ts.isPropertyAccessExpression(node) && node.expression.getText() === 'site') {
+      const value = site.get(node.name.text);
+      if (value && (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value))) return value.text;
+      throw new Error(masked(`${where}: ${node.getText()} is a string in the site object in src/data/site.ts`));
+    }
+    throw new Error(masked(`${CARD}, and in ${where}, ${node?.getText()} is not`));
+  };
+  const found = cards.elements.map((card) => {
+    const field = fields(card);
+    if ([...field.keys()].sort().join() !== 'slug,text,title')
+      throw new Error(masked(`${CARD}, and this one is not: ${card.getText()}`));
+    const slug = string(field.get('slug'), 'a card');
+    const where = `the card ${slug}`;
+    return { slug, title: string(field.get('title'), where), text: string(field.get('text'), where) };
+  });
+  expect(found.length, 'cards read from src/data/cards.ts').toBeGreaterThan(2);
+  return found;
+}
+
+test('a card is read as TypeScript reads it, or fails saying how it must be written', () => {
+  const site = "export const site = {\n  tagline: 'A \\x41', // drawn on the home card\n  count: 2,\n} as const;";
+  const list = (...cards: string[]) =>
+    `export const cards = [\n${cards.map((card) => `  ${card},\n`).join('')}] as const satisfies readonly Card[];`;
+  const fine = ["{ slug: 'a', title: site.tagline, text: 'One' }", "{ slug: 'b', title: 'B', text: 'Two' }"];
+  // Escapes, comments and either kind of quote, and the fields in any order.
+  const more = [
+    "{ slug: 'c', title: \"C's\", /* drawn small */ text: '\\u{44}\\\n' }",
+    "{ text: `E`, slug: 'e', // the last\n title: 'E' }",
+  ];
+  expect(drawnCards(list(...fine, ...more), site)).toEqual([
+    { slug: 'a', title: 'A A', text: 'One' },
+    { slug: 'b', title: 'B', text: 'Two' },
+    { slug: 'c', title: "C's", text: 'D' },
+    { slug: 'e', title: 'E', text: 'E' },
+  ]);
+  for (const [odd, said] of [
+    ["{ slug: 'c', title: 'C' }", 'site.<key>, and this one is not: {'],
+    ["{ slug: 'c', title: 'C', text: 'Three', alt: 'More' }", 'site.<key>, and this one is not: {'],
+    ['...more', 'site.<key>, and this one is not: ...more'],
+    ["{ slug: 'c', title: 'C', ...more }", 'site.<key>, and this one is not: {'],
+    ["{ slug: 'c', title: `C${x}`, text: 'Three' }", 'and in the card c, `C${x}` is not'],
+    ["{ slug: 'c', title: 'C' + 'D', text: 'Three' }", "and in the card c, 'C' + 'D' is not"],
+    ["{ slug: 'c', title: other.tagline, text: 'Three' }", 'and in the card c, other.tagline is not'],
+    ["{ slug: 'c', title: site.missing, text: 'Three' }", 'the card c: site.missing is a string in the site object'],
+    ["{ slug: 'c', title: site.count, text: 'Three' }", 'the card c: site.count is a string in the site object'],
+  ])
+    expect(() => drawnCards(list(...fine, odd), site), odd).toThrow(said);
+  expect(() => drawnCards('export const cards = make();', site)).toThrow('declares its cards as a list');
+});
+
 test('a link preview image says what is planned', () => {
-  // The image is shown on other sites, without the note on the page. Read from the source, which the
-  // browser tests cannot import (it reads the build's settings).
-  const texts = [...readFileSync('src/data/cards.ts', 'utf8').matchAll(/\btext: '([^']+)'/g)].map((m) => m[1]);
-  expect(texts.length).toBeGreaterThan(2);
-  for (const text of texts) {
-    if (describesCompute.test(text)) expect(text).toMatch(/\bwill\b|planned/);
-    expect(text).not.toMatch(availableToday);
+  // The image is shown on other sites, without the note on the page.
+  for (const { slug, text } of drawnCards()) {
+    if (describesCompute.test(text)) expectText(text, /\bwill\b|planned/, `the card ${slug}`);
+    expectText(text, availableToday, `the card ${slug}`, false);
   }
 });
 
 test('the README says what is planned', () => {
   const readme = readFileSync('README.md', 'utf8');
   const opening = readme.split('\n\n')[2];
-  expect(opening).toContain('MDXplora is being built and opens to early-access groups in stages.');
-  expect(readme).not.toMatch(/\bis in early access\b/i);
+  expectText(opening, 'MDXplora is being built and opens to early-access groups in stages.', "the README's opening");
+  expectText(readme, /\bis in early access\b/i, 'the README', false);
   // The ways to start are planned too.
   const ways = readme.split('## Three ways to start')[1].split('\n## ')[0];
   const items = ways.split('\n- ').slice(1);
-  expect(items).toHaveLength(3);
-  for (const item of items) expect(item).toMatch(/\bwill\b/);
+  expect(items.length, 'ways to start in the README').toBe(3);
+  for (const item of items) expectText(item, /\bwill\b/, `the README's way to start "${item.slice(0, 40)}"`);
 });
 
 test('the answer to "Can I use MDXplora today?" says it plainly', async ({ page }) => {
   await page.goto('/');
   const answer = (await page.locator('details', { hasText: 'Can I use MDXplora today?' }).locator('p').textContent())!;
-  expect(answer).toContain('MDXplora is being built and opens to early-access groups in stages');
-  expect(answer.match(/\bgroups\b/g), 'says "groups" once').toHaveLength(1);
+  expectText(answer, 'MDXplora is being built and opens to early-access groups in stages', 'the answer');
+  expect(answer.match(/\bgroups\b/g)?.length, 'says "groups" once').toBe(1);
 });
 
 test('a Config written by the Agent or built in the form is validated, in those words', async ({ page }) => {
   await page.goto('/');
-  const describe = page.locator('.card', { has: page.getByRole('heading', { name: 'Describe it' }) });
-  await expect(describe).toContainText('validates it');
-  await expect(describe).not.toContainText(/\bchecks?\b/);
-  const build = page.locator('.card', { has: page.getByRole('heading', { name: 'Build it' }) });
-  await expect(build).toContainText('validates each one as you go');
-  await expect(build).not.toContainText(/\bcheck(?:s|ed)?\b/);
+  const describe = await textOf(page.locator('.card', { has: page.getByRole('heading', { name: 'Describe it' }) }));
+  expectText(describe, 'validates it', 'the card Describe it');
+  expectText(describe, /\bchecks?\b/, 'the card Describe it', false);
+  const build = await textOf(page.locator('.card', { has: page.getByRole('heading', { name: 'Build it' }) }));
+  expectText(build, 'validates each one as you go', 'the card Build it');
+  expectText(build, /\bcheck(?:s|ed)?\b/, 'the card Build it', false);
   const readme = readFileSync('README.md', 'utf8');
-  expect(readme).toMatch(/\*\*Describe it\.\*\*[^\n]*\n?[^\n]*validates? it/);
-  expect(readme).toMatch(/\*\*Build it\.\*\*[^\n]*\n?[^\n]*validate each one as you go/);
+  expectText(readme, /\*\*Describe it\.\*\*[^\n]*\n?[^\n]*validates? it/, 'the README');
+  expectText(readme, /\*\*Build it\.\*\*[^\n]*\n?[^\n]*validate each one as you go/, 'the README');
 });
 
 test('DEVELOPMENT.md names every check script', () => {
   const scripts = Object.keys(JSON.parse(readFileSync('package.json', 'utf8')).scripts);
   const development = readFileSync('DEVELOPMENT.md', 'utf8');
   for (const name of scripts.filter((name) => name.startsWith('check'))) {
-    expect(development).toContain(`npm run ${name} `);
+    expectText(development, `npm run ${name} `, 'DEVELOPMENT.md');
   }
 });
 
@@ -205,7 +327,7 @@ test('Dependabot leaves fflate on 0.7 while the override holds it there', () => 
   const pinned = JSON.parse(readFileSync('package.json', 'utf8')).overrides.satori.fflate;
   const dependabot = readFileSync('.github/dependabot.yml', 'utf8');
   if (pinned.startsWith('0.7.')) {
-    expect(dependabot).toMatch(/- dependency-name: fflate\n\s+versions: \['>= 0\.8\.0'\]/);
+    expectText(dependabot, /- dependency-name: fflate\n\s+versions: \['>= 0\.8\.0'\]/, '.github/dependabot.yml');
   }
 });
 
@@ -228,7 +350,7 @@ test('the engine is named only where results must cite it, and nothing links to 
       copy.querySelectorAll('script').forEach((el) => el.remove());
       return copy.textContent ?? '';
     });
-    expect(elsewhere, path).not.toContain('FastMDXplora');
+    expectText(elsewhere, 'FastMDXplora', `${path} outside the citation`, false);
     const repositoryLinks = await page.locator('a[href^="https://github.com/"]').count();
     expect(repositoryLinks, path).toBe(0);
   }
@@ -325,19 +447,25 @@ async function sitemapPages(request: APIRequestContext): Promise<string[]> {
   const locations = async (path: string) =>
     [...(await (await request.get(path)).text()).matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname);
   const listed = (await Promise.all((await locations('/sitemap-index.xml')).map(locations))).flat();
-  for (const path of pages) expect(listed, 'pages in the sitemap').toContain(path);
+  for (const path of pages)
+    expect(listed.includes(path), masked(`${path} is among the pages in the sitemap, ${listed.join(', ')}`)).toBe(true);
   return listed;
 }
 
-// The text files under a folder, known by their extension, so an image or a font is not read as text. A link is not
-// followed, and only regular files are read.
-const TEXT_FILE = /\.(?:astro|ts|js|mjs|css|md|mdx|json|svg|html|txt)$/i;
-function textFiles(dir: string): string[] {
+// The regular files under a folder, hidden ones included. A link is not followed.
+function filesUnder(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
-    if (entry.isDirectory()) return textFiles(path);
-    return entry.isFile() && TEXT_FILE.test(entry.name) ? [path] : [];
+    if (entry.isDirectory()) return filesUnder(path);
+    return entry.isFile() ? [path] : [];
   });
+}
+
+// The text files under a folder, known by their extension or by having none, as CNAME and .nvmrc have, so an image or a
+// font is not read as text.
+const TEXT_FILE = /\.(?:astro|ts|tsx|js|jsx|mjs|css|md|mdx|json|webmanifest|yml|yaml|xml|svg|html|txt)$|^\.?[^.]+$/i;
+function textFiles(dir: string): string[] {
+  return filesUnder(dir).filter((path) => TEXT_FILE.test(basename(path)));
 }
 
 test('the word test reads the text files under a folder, and not images, fonts, links or folders', () => {
@@ -350,10 +478,27 @@ test('the word test reads the text files under a folder, and not images, fonts, 
     writeFileSync(join(dir, 'assets', 'photo.png'), 'Adobe Inc.');
     writeFileSync(join(dir, 'assets', 'font.woff2'), 'lTd');
     writeFileSync(join(dir, 'notes.md', 'plan.MD'), 'text');
+    writeFileSync(join(dir, 'CNAME'), 'example.org');
+    writeFileSync(join(dir, '.nvmrc'), '22');
+    mkdirSync(join(dir, '.well-known'));
+    writeFileSync(join(dir, '.well-known', 'humans.txt'), 'text');
     symlinkSync(join(dir, 'page.astro'), join(dir, 'link.ts'));
     symlinkSync(join(dir, 'assets'), join(dir, 'linked'));
-    expect(textFiles(dir).sort()).toEqual(
-      [join(dir, 'assets', 'logo.svg'), join(dir, 'notes.md', 'plan.MD'), join(dir, 'page.astro')].sort(),
+    expect(
+      textFiles(dir)
+        .sort()
+        .map((file) => masked(file)),
+    ).toEqual(
+      [
+        join(dir, 'assets', 'logo.svg'),
+        join(dir, 'notes.md', 'plan.MD'),
+        join(dir, 'page.astro'),
+        join(dir, 'CNAME'),
+        join(dir, '.nvmrc'),
+        join(dir, '.well-known', 'humans.txt'),
+      ]
+        .sort()
+        .map((file) => masked(file)),
     );
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -363,65 +508,830 @@ test('the word test reads the text files under a folder, and not images, fonts, 
 test('nothing calls MDXplora a company or speaks of customers', async ({ page, request }) => {
   for (const path of [...(await sitemapPages(request)), '/no-such-page/']) {
     const response = await page.goto(path);
-    expect(response?.status(), path).toBe(path === '/no-such-page/' ? 404 : 200);
-    expect(commerceFound(await page.content()), path).toEqual([]);
+    expect(response?.status(), masked(path)).toBe(path === '/no-such-page/' ? 404 : 200);
+    expect(
+      commerceFound(await page.content()).map((found) => masked(found)),
+      masked(path),
+    ).toEqual([]);
   }
   for (const path of ['/.well-known/security.txt', '/manifest.webmanifest', '/robots.txt']) {
     const response = await request.get(path);
     expect(response.ok(), path).toBe(true);
-    expect(commerceFound(await response.text()), path).toEqual([]);
+    expect(
+      commerceFound(await response.text()).map((found) => masked(found)),
+      path,
+    ).toEqual([]);
   }
   const source = textFiles('src');
-  expect(source).toContain(join('src', 'data', 'cards.ts'));
+  expect(source.includes(join('src', 'data', 'cards.ts')), 'src/data/cards.ts is read').toBe(true);
   expect(source.length, 'text files read under src/').toBeGreaterThanOrEqual(26);
   for (const file of ['README.md', 'DEVELOPMENT.md', ...source])
-    expect(commerceFound(readFileSync(file, 'utf8')), file).toEqual([]);
+    expect(
+      commerceFound(readFileSync(file, 'utf8')).map((found) => masked(found)),
+      masked(file),
+    ).toEqual([]);
 });
 
-// The site speaks as "the MDXplora team". Its operator is named on the privacy page only, as the data controller.
-const operatorName = /(?<![\p{L}\p{N}])(?:adekunle|aina)(?![\p{L}\p{N}])/iu;
+// The site speaks as "the MDXplora team". Its operator is named on the privacy page only, as the data controller;
+// the check that finds his name, and masks it in a report, is in lib/operator-name.ts.
+
+// The address of each stylesheet a page links to, as written: a link whose rel holds the word stylesheet.
+function stylesheetsOf(html: string): string[] {
+  const found: string[] = [];
+  const stack: DefaultTreeAdapterTypes.Node[] = [parse(html)];
+  while (stack.length) {
+    const node = stack.pop()!;
+    if ('attrs' in node && node.tagName === 'link') {
+      const attribute = (name: string) => node.attrs.find((a) => a.name === name)?.value;
+      const href = attribute('href');
+      if (href && /(?:^|[\t\n\f\r ])stylesheet(?:$|[\t\n\f\r ])/i.test(attribute('rel') ?? '')) found.push(href);
+    }
+    if ('childNodes' in node) stack.push(...node.childNodes);
+  }
+  return found;
+}
+
+// The text an image or a font holds compressed, each with where it is: the zTXt, compressed iTXt and iCCP chunks of
+// a PNG, at the start or inside another file, as an icon holds one, inflated; a WOFF font's tables and metadata, which
+// zlib compresses, inflated; and a WOFF2 font's tables and metadata, which Brotli compresses. A font collection is not
+// read.
+const PNG = Buffer.from('\x89PNG\r\n\x1a\n', 'latin1');
+function compressedIn(bytes: Buffer): { where: string; text: Buffer; utf8?: boolean }[] {
+  const out: { where: string; text: Buffer; utf8?: boolean }[] = [];
+  for (let png = bytes.indexOf(PNG); png >= 0; png = bytes.indexOf(PNG, png + 1)) {
+    for (let at = png + 8; at + 12 <= bytes.length; at += 12 + bytes.readUInt32BE(at)) {
+      const type = bytes.toString('latin1', at + 4, at + 8);
+      if (type === 'IEND' || at + 12 + bytes.readUInt32BE(at) > bytes.length) break;
+      const data = bytes.subarray(at + 8, at + 8 + bytes.readUInt32BE(at));
+      // Its keyword, ended by a zero byte, then the compression method, or for iTXt a flag, the method, a language
+      // and a translated keyword.
+      const keyword = data.indexOf(0);
+      const where = `its ${type} chunk at byte ${at}, inflated`;
+      if (type === 'zTXt' || type === 'iCCP') out.push({ where, text: inflateSync(data.subarray(keyword + 2)) });
+      if (type === 'iTXt' && data[keyword + 1] === 1) {
+        const translated = data.indexOf(0, data.indexOf(0, keyword + 3) + 1);
+        out.push({ where, text: inflateSync(data.subarray(translated + 1)), utf8: true });
+      }
+    }
+  }
+  if (bytes.toString('latin1', 0, 4) === 'wOFF') {
+    // The table directory, after a header of 44 bytes: for each table its tag, offset, length and length once
+    // inflated, and a checksum. A table shorter than once inflated is compressed.
+    for (let table = 0; table < bytes.readUInt16BE(12); table++) {
+      const at = 44 + 20 * table;
+      const [offset, length, inflated] = [4, 8, 12].map((field) => bytes.readUInt32BE(at + field));
+      if (length < inflated)
+        out.push({
+          where: `its ${bytes.toString('latin1', at, at + 4)} table, inflated`,
+          text: inflateSync(bytes.subarray(offset, offset + length)),
+        });
+    }
+    const [metaOffset, metaLength] = [bytes.readUInt32BE(24), bytes.readUInt32BE(28)];
+    if (metaLength)
+      out.push({
+        where: 'its metadata, inflated',
+        text: inflateSync(bytes.subarray(metaOffset, metaOffset + metaLength)),
+        utf8: true,
+      });
+  }
+  if (bytes.toString('latin1', 0, 4) === 'wOF2') {
+    if (bytes.toString('latin1', 4, 8) === 'ttcf') throw new Error('a WOFF2 font collection is not read here');
+    // The table directory: for each table its flags, a tag unless the flags name a known one, its length and, for a
+    // table transformed (glyf and loca unless their transform is 3, any other unless it is 0), the transformed length.
+    let at = 48;
+    const base128 = () => {
+      let value = 0;
+      for (let i = 0; i < 5; i++) {
+        const byte = bytes[at++];
+        value = value * 128 + (byte & 0x7f);
+        if (byte < 0x80) return value;
+      }
+      throw new Error('a WOFF2 length is longer than five bytes');
+    };
+    for (let table = 0; table < bytes.readUInt16BE(12); table++) {
+      const flags = bytes[at++];
+      if ((flags & 0x3f) === 0x3f) at += 4;
+      base128();
+      const glyfOrLoca = (flags & 0x3f) === 10 || (flags & 0x3f) === 11;
+      if (glyfOrLoca ? flags >> 6 !== 3 : flags >> 6 !== 0) base128();
+    }
+    out.push({
+      where: 'its tables, decompressed',
+      text: brotliDecompressSync(bytes.subarray(at, at + bytes.readUInt32BE(20))),
+    });
+    const [metaOffset, metaLength] = [bytes.readUInt32BE(28), bytes.readUInt32BE(32)];
+    if (metaLength)
+      out.push({
+        where: 'its metadata, decompressed',
+        text: brotliDecompressSync(bytes.subarray(metaOffset, metaOffset + metaLength)),
+        utf8: true,
+      });
+  }
+  return out;
+}
+
+// Images and fonts, read as bytes, as UTF-8 text, as metadata in XMP is written, and the text they hold compressed. Any
+// other file of the build or the repository is read as text, and as bytes, so text in UTF-16 is found too. A link git
+// tracks is read as the path it holds.
+const BINARY_FILE = /\.(?:png|ico|jpe?g|gif|webp|avif|woff2?|ttf|otf)$/i;
+const isKnownKind = (file: string) => TEXT_FILE.test(basename(file)) || BINARY_FILE.test(file);
+const isLink = (file: string) => lstatSync(file).isSymbolicLink();
+// The runs of text in bytes read as UTF-8, each of four characters or more and on its own line: what lies between
+// controls other than a tab or line break, and bytes that are not UTF-8.
+const textIn = (bytes: Buffer) => (bytes.toString('utf8').match(/(?:[^\p{Cc}\ufffd]|[\t\n\r]){4,}/gu) ?? []).join('\n');
+function whereNamedInBytes(bytes: Buffer): string | undefined {
+  const raw = whereNamed(bytes.toString('latin1'), namedInBytes);
+  if (raw) return raw;
+  const text = whereNamed(textIn(bytes));
+  if (text) return `${text}, in its text read as UTF-8`;
+  for (const { where, text, utf8 } of compressedIn(bytes)) {
+    const inside =
+      whereNamed(text.toString('latin1'), namedInBytes) ?? (utf8 ? whereNamed(text.toString('utf8')) : undefined);
+    if (inside) return `${inside}, in ${where}`;
+  }
+  return undefined;
+}
+function whereNamedInFile(file: string): string | undefined {
+  try {
+    if (isLink(file)) return whereNamed(readlinkSync(file));
+    const bytes = readFileSync(file);
+    if (BINARY_FILE.test(file)) return whereNamedInBytes(bytes);
+    return whereNamed(bytes.toString('utf8')) ?? whereNamed(bytes.toString('latin1'), namedInBytes);
+  } catch (error) {
+    throw new Error(`${masked(file)}: ${masked((error as Error).message)}`);
+  }
+}
+// Where a file's path, as given, names the operator, any of its folders included, or else the file itself, found
+// from the folder given.
+function whereNamedInPathOrFile(file: string, cwd = '.'): string | undefined {
+  const inPath = whereNamed(file);
+  return inPath ? `in its path, ${inPath}` : whereNamedInFile(join(cwd, file));
+}
+// The files git tracks, as it lists them, but those deleted and not yet removed from git, and any that is neither a
+// regular file nor a link.
+function trackedFiles(cwd = '.'): string[] {
+  return execFileSync('git', ['ls-files', '-z'], { cwd, encoding: 'utf8' })
+    .split('\0')
+    .filter((file) => {
+      const status = file && lstatSync(join(cwd, file), { throwIfNoEntry: false });
+      return status && (status.isFile() || status.isSymbolicLink());
+    });
+}
+
+// Examples of his name are built from it: a word with one of its letters written another way, or something put
+// between two of its letters. A word is cut where neither part is the short form of his given name or his family
+// name, which are found alone.
+const written = (word: string, at: number, as: (letter: string) => string) =>
+  word.slice(0, at) + as(word.at(at)!) + word.slice(at).slice(1);
+const cut = (word: string, at: number, between: string) => word.slice(0, at) + between + word.slice(at);
+const hex = (letter: string, digits = 2) => letter.codePointAt(0)!.toString(16).padStart(digits, '0');
+const decimal = (letter: string) => `&#${letter.codePointAt(0)};`;
+const percent = (letter: string) => `%${hex(letter).toUpperCase()}`;
+const capital = (word: string) => word[0].toUpperCase() + word.slice(1);
+const [givenLower, familyLower] = [GIVEN.toLowerCase(), FAMILY.toLowerCase()];
+// These tests check the masking itself, so they cannot rely on it: an example, a text or a report that names him is
+// shown with all its letters and digits as *, and an expectation of one shows nothing else.
+const starred = (text = '') => text.replace(/[\p{L}\p{N}]/gu, '*');
+const example = (text: string, i: number) => `example ${i + 1}, ${starred(text)}`;
+function expectReport(report: string | undefined, expected: string | RegExp | undefined, where = 'the report') {
+  const holds = expected instanceof RegExp ? expected.test(report ?? '') : report === expected;
+  expect(holds, `${where} is ${report === undefined ? 'nothing' : `"${starred(report)}"`}`).toBe(true);
+}
+
+// His name with the tone marks of Yoruba, as each letter takes them: acute, or high, on the e, u and last e of his
+// given name, and grave, or low, on each letter of his family name but its n.
+const MARKS = [GIVEN, FAMILY].map((word, w) =>
+  [...word].map((_, at) => (w === 0 ? ([2, 4, 7].includes(at) ? '\u0301' : '') : at === 2 ? '' : '\u0300')),
+);
+const toned = (word: number, which = (_: number) => true) =>
+  [...[GIVEN, FAMILY][word]].map((letter, at) => letter + (which(at) ? MARKS[word][at] : '')).join('');
+// Ordinary words and other people's names that are spelled much as his name or a handle of his is, which the check
+// must not take for him. Those that hold his family name are built from it, as every example of it is.
+const ORDINARY = [
+  ...['R', 'Z', 'Sh', 'T', 'Ukr'].map((start) => start + familyLower),
+  'mainland',
+  `cont${familyLower.slice(0, 3)}able`,
+  'Alina',
+  'Elina',
+  'Adebayo',
+  'Adele',
+  'Adeola',
+  'Ainhoa',
+  `k${familyLower}`,
+];
 
 test('the check for the operator finds his name in any case, and only as a word', () => {
-  for (const text of ['Adekunle Aina', 'ADEKUNLE', 'aina', 'Dr Aina.', 'Adekunle’s'])
-    expect(operatorName.test(text), text).toBe(true);
-  for (const text of ['Ainara', 'containable', 'MDXplora team', 'Adekunles'])
-    expect(operatorName.test(text), text).toBe(false);
+  for (const [i, text] of [
+    OPERATOR,
+    GIVEN.toUpperCase(),
+    familyLower,
+    `Dr ${FAMILY}.`,
+    `${GIVEN}’s`,
+    // Ended by digits, as a handle is.
+    `${givenLower}123@example.org`,
+    `${familyLower}2026`,
+    // The short form of his given name alone, as a word and in an address, and another person of that name too.
+    `Thanks, ${capital(SHORT)}.`,
+    `Dr ${capital(SHORT)}`,
+    `Ask ${capital(SHORT)}`,
+    `@${SHORT}2026`,
+    `${SHORT}@example.org`,
+    `${capital(SHORT)} Okafor`,
+    // His family name, also a Finnish word, is refused in that sense too.
+    `${capital(familyLower)} ja ikuisesti`,
+    // With the tone marks of Yoruba, composed and decomposed, all or some of them, and his family name with one.
+    `${toned(0)} ${toned(1)}`.normalize('NFC'),
+    `${toned(0)} ${toned(1)}`.normalize('NFD'),
+    toned(0, (at) => at === 2).normalize('NFC'),
+    toned(1, (at) => at < 2).normalize('NFC'),
+    `${FAMILY.slice(0, 3)}\u00e1`,
+    `${FAMILY}\u0301`,
+  ].entries())
+    expect(namedIn(text), example(text, i)).toBe('his name');
+  for (const [i, text] of [
+    `${FAMILY}ra`,
+    'MDXplora team',
+    `${GIVEN}s`,
+    `${SHORT}s`,
+    `e\u0301${familyLower}`,
+    `${toned(1)}ra`.normalize('NFC'),
+    `${toned(0)}s`.normalize('NFC'),
+    ...ORDINARY,
+    ORDINARY.join(' '),
+    ORDINARY.map((word) => word.toUpperCase()).join(', '),
+  ].entries())
+    expect(namedIn(text), example(text, i)).toBeUndefined();
+});
+
+test('the check for the operator finds a handle of his initials and family name, either way round', () => {
+  const initial = givenLower[0];
+  const initials = initial + SHORT[0];
+  for (const [i, text] of [
+    `${initial}${familyLower}@example.edu`,
+    `${initial}.${familyLower}`,
+    `${initials}${familyLower}`,
+    `${initial}${familyLower}`,
+    `${familyLower}${initial}`,
+    `${familyLower}_${initials}`,
+    `${initials.toUpperCase()}${familyLower}2026`,
+    `${capital(initial)}${capital(familyLower)}Lab`,
+    // His given name or its short form, and the first letter of his family name.
+    `${givenLower}${familyLower[0]}@example.org`,
+    `${SHORT}${familyLower[0]}@example.org`,
+    `${SHORT}${familyLower[0]}2026`,
+  ].entries())
+    expect(namedIn(text), example(text, i)).toBeDefined();
+  // Neither a bare second initial, nor his initials inside a longer word.
+  for (const [i, text] of [
+    `${SHORT[0]}${familyLower}`,
+    `${SHORT[0]}.${familyLower}ra`,
+    `x${initial}${familyLower}ra`,
+    `${familyLower}${initial}ra`,
+    `${SHORT}${familyLower[0]}ra`,
+  ].entries())
+    expect(namedIn(text), example(text, i)).toBeUndefined();
+});
+
+test('the check for the operator finds his name written with references, percent-encoding or escapes', () => {
+  for (const [i, text] of [
+    written(GIVEN, -1, decimal),
+    written(GIVEN, -1, (letter) => `&#x${hex(letter)};`),
+    written(FAMILY, 0, decimal),
+    written(GIVEN, 0, percent),
+    written(GIVEN, 4, percent),
+    [...FAMILY].map(percent).join(''),
+    written(GIVEN, 4, (letter) => `\\u${hex(letter, 4)}`),
+    written(GIVEN, 4, (letter) => `\\u{${hex(letter)}}`),
+    written(GIVEN, 4, (letter) => `\\x${hex(letter)}`),
+    written(FAMILY, 0, (letter) => `\\${hex(letter)} `),
+    written(FAMILY, 3, (letter) => `\\${hex(letter, 6)}`),
+    // Encoded twice: a reference percent-encoded or escaped, and a percent-encoding escaped.
+    written(GIVEN, -1, (letter) => `%26%23${letter.codePointAt(0)};`),
+    written(FAMILY, 0, (letter) => `%26%23${letter.codePointAt(0)};`),
+    written(GIVEN, -1, (letter) => `\\26#${letter.codePointAt(0)};`),
+    written(GIVEN, -1, (letter) => `\\x25${hex(letter)}`),
+    // A letter with a mark, as a reference.
+    written(FAMILY, 0, () => '&Aacute;'),
+    written(FAMILY, 3, () => '&#xe0;'),
+  ].entries())
+    expect(namedIn(text), example(text, i)).toBeDefined();
+  for (const [i, text] of [
+    written(`${FAMILY}ra`, 1, decimal),
+    written(`${FAMILY}ra`, 0, percent),
+    'cont&#97;inable',
+    written(`${FAMILY}ra`, 0, (letter) => `\\${hex(letter)} `),
+    written(`${FAMILY}ra`, 0, () => '&Aacute;'),
+    'MDXplora team',
+    '%E9',
+    written(`${GIVEN}s`, 7, (letter) => `%26%23${letter.codePointAt(0)};`),
+    written(`${FAMILY}ra`, 0, (letter) => `%26%23${letter.codePointAt(0)};`),
+  ].entries())
+    expect(namedIn(text), example(text, i)).toBeUndefined();
+});
+
+test('the check for the operator finds his name with hidden characters, inside markup or in look-alike letters', () => {
+  for (const [i, text] of [
+    // A soft hyphen, as a reference and as it is; a zero width space, as it is and as references.
+    cut(GIVEN, 5, '&shy;'),
+    cut(GIVEN, 5, '\u00ad'),
+    cut(GIVEN, 5, '\u200b'),
+    cut(GIVEN, 5, '&#8203;'),
+    cut(GIVEN, 5, '&ZeroWidthSpace;'),
+    cut(FAMILY, 2, '\u2060'),
+    cut(FAMILY, 2, '\ufe0f'),
+    // Split by tags or a comment: of phrasing content, a word break, a ruby, SVG text or a custom element.
+    `${cut(GIVEN, 5, '<b>')}</b>`,
+    `<span>${cut(GIVEN, 5, '</span>')}`,
+    cut(GIVEN, 5, '<!-- -->'),
+    `<title>x</title><p>${cut(GIVEN, 5, '<b>')}</b></p>`,
+    `<!doctype html><title>x</title><p><span>${cut(GIVEN, 5, '</span>')}</p>`,
+    `<p title="a>b">${cut(cut(GIVEN, 5, '</i>'), 3, '<i>')}</p>`,
+    `const card = '<p>${cut(GIVEN, 5, '<b>')}</b></p>';`,
+    cut(GIVEN, 5, '<wbr>'),
+    `<nobr>${cut(GIVEN, 5, '</nobr>')}`,
+    `<ruby><rb>${cut(GIVEN, 5, '</rb><rb>')}</rb><rt></rt></ruby>`,
+    `<svg><text>${cut(GIVEN, 5, '<tspan>')}</tspan></text></svg>`,
+    `<svg><text><textPath href="#a">${cut(GIVEN, 5, '</textPath>')}</text></svg>`,
+    `<p>${cut(GIVEN, 5, '<team-name>')}</team-name></p>`,
+    `const card = '${cut(GIVEN, 5, '<x-y>')}</x-y>';`,
+    // Split by markup that draws nothing there, with what it holds: a script, a style, a template, a noscript, a link
+    // or meta tag, or an element marked hidden; in a page, and in markup a script writes.
+    cut(GIVEN, 5, '<script></script>'),
+    `<p>${cut(GIVEN, 5, '<script>let shown = 1;</script>')}</p>`,
+    `<p>${cut(GIVEN, 5, '<style>p { color: red }</style>')}</p>`,
+    `<p>${cut(GIVEN, 5, '<template><b>Draft</b></template>')}</p>`,
+    `<p>${cut(GIVEN, 5, '<noscript>Turn scripts on</noscript>')}</p>`,
+    `<p>${cut(GIVEN, 5, '<link itemprop="url" href="/">')}</p>`,
+    `<p>${cut(GIVEN, 5, '<meta itemprop="name" content="Draft">')}</p>`,
+    `<p>${cut(GIVEN, 5, '<span hidden>Draft</span>')}</p>`,
+    `<div>${cut(GIVEN, 5, '<div class="note" hidden="">Draft</div>')}</div>`,
+    `const card = '${cut(GIVEN, 5, '<style>b { color: red }</style>')}';`,
+    `const card = '${cut(GIVEN, 5, '<span class="note" hidden>Draft</span>')}';`,
+    // An element marked hidden that holds another of its kind, read as a page is; and markup a script writes.
+    `<p>${cut(GIVEN, 5, '<span hidden><span>Draft</span> one</span>')}</p>`,
+    `<script>card.innerHTML = '${cut(GIVEN, 5, '<style>b { color: red }</style>')}';</script>`,
+    // Markup that is itself written encoded: escaped in a script, and as references.
+    `const card = '${cut(GIVEN, 5, '\\x3cb>')}</b>';`,
+    `const card = '${cut(GIVEN, 5, '\\u003cwbr\\u003e')}';`,
+    cut(GIVEN, 5, '&lt;wbr&gt;'),
+    `&lt;p&gt;${cut(GIVEN, 5, '&lt;b&gt;')}&lt;/b&gt;&lt;/p&gt;`,
+    cut(FAMILY, 2, '%3Cwbr%3E'),
+    // Fullwidth, and with a Cyrillic or Greek letter for a Latin one.
+    [...FAMILY].map((letter) => String.fromCodePoint(letter.codePointAt(0)! + 0xfee0)).join(''),
+    written(FAMILY, 0, () => '\u0410'),
+    written(GIVEN, 2, () => '\u0435'),
+    written(
+      written(FAMILY, 0, () => '\u0391'),
+      1,
+      () => '\u03b9',
+    ),
+    // A capital I, Latin, Cyrillic or Greek, for an l, and a palochka for an i.
+    written(GIVEN, 6, () => 'I'),
+    written(GIVEN, 6, () => '\u0406'),
+    written(GIVEN, 6, () => '\u0399'),
+    written(
+      written(
+        written(FAMILY, 0, () => '\u0410'),
+        1,
+        () => '\u04c0',
+      ),
+      3,
+      () => '\u0430',
+    ),
+    written(FAMILY, 1, () => '\u04cf'),
+    // Joined into a handle, either way round, and among other words.
+    GIVEN + FAMILY,
+    SHORT + familyLower,
+    familyLower + givenLower,
+    FAMILY + GIVEN,
+    `https://example.org/${GIVEN}_${FAMILY}`,
+    `mailto:${SHORT}.${familyLower}@example.org`,
+    `${GIVEN}${FAMILY}Lab`,
+    // A name in letters and digits much as base64 is written, but not as it is.
+    `const ${givenLower}${FAMILY}Lab2026Site = 1;`,
+  ].entries())
+    expect(namedIn(text), example(text, i)).toBeDefined();
+  for (const [i, text] of [
+    `${capital(SHORT)}s, ${FAMILY}ra`,
+    `${SHORT}${familyLower}ra`,
+    `${FAMILY.slice(0, 3)}\u00e1ra`,
+    `${FAMILY}\u0301ra`,
+    `${FAMILY.slice(0, 3)}&aacute;ra`,
+    [...`${FAMILY}ra`].map((letter) => String.fromCodePoint(letter.codePointAt(0)! + 0xfee0)).join(''),
+    written(`${FAMILY}ra`, 0, () => '\u0410'),
+    `${cut(GIVEN.slice(0, 6), 3, '<b>')}</b>`,
+    `${cut(GIVEN, 5, '&shy;')}s`,
+    // Parted by an element that breaks the text.
+    cut(GIVEN, 5, '</p><p>'),
+    cut(GIVEN, 5, '<br>'),
+    cut(GIVEN, 5, '<div>'),
+    cut(GIVEN, 5, '</li><li>'),
+    `<table><tr><td>${cut(GIVEN, 5, '</td><td>')}</td></tr></table>`,
+    cut(GIVEN, 5, '<button>'),
+    `const card = '${cut(GIVEN, 5, '<br>')}';`,
+    `<title>x</title><p>${cut(GIVEN, 5, '<b>')}s</b></p>`,
+    cut(GIVEN, 5, '&lt;br&gt;'),
+    `const card = '${cut(GIVEN, 5, '\\x3cbr>')}';`,
+    // What a hidden element holds is not read as part of the text around it.
+    `<p>${GIVEN.slice(0, 5)}<span hidden>${GIVEN.slice(5)}</span>s</p>`,
+    // In base64, as an integrity or policy hash or a data: address writes it, where letters and digits drawn at
+    // random spell his family name between a capital or a digit, and between + or /.
+    `"integrity": "sha512-q8Rz3${FAMILY}7Jk2Lm9Pq+Xw4Ty6Bv1Nc0Ds5Fg8Hj2Kl3Zx7Cv4Bn6Mq0Wp5Ee1Rt8Yu3Io=="`,
+    `script-src 'sha256-Jx9k${FAMILY}Qz3Lm8Pq2Rt7Vw5Yb1Nc4Df6Gh0Kj=';`,
+    `url(data:font/woff2;base64,d09GMgABAAAAA3x+${FAMILY}/k2Lm9Pq4Xw7Ty1Bv6Nc0Ds5Fg8Hj)`,
+  ].entries())
+    expect(namedIn(text), example(text, i)).toBeUndefined();
+});
+
+test('a report of where the operator is named masks his name, and finds where it is', () => {
+  // Found once decoded, he is reported as written, masked, with the text around him; his whole given name, not only
+  // the short form it ends with.
+  const softened = cut(GIVEN, 3, '&shy;');
+  expectReport(
+    whereNamed(`<p>Our team.</p>\n<p>${softened} wrote this.</p>`),
+    'his name on line 2, written "***&***;*****", in "<p>Our team.</p>\\u{a}<p>***&***;***** wrote this.</p>"',
+  );
+  expectReport(
+    whereNamed(`id: ${cut(GIVEN, 3, '\u200b')}`),
+    'his name on line 1, written "***\\u{200b}*****", in "id: ***\\u{200b}*****"',
+  );
+  // Each time he is named in the text around him is masked too.
+  expectReport(whereNamed(`By ${OPERATOR}.`), 'his name on line 1, written "********", in "By ******** ****."');
+  expectReport(whereNamed(`Thanks, ${capital(SHORT)}.`), 'his name on line 1, written "*****", in "Thanks, *****."');
+  // A word that only begins as his name does is not taken for it, before or after him, though it is masked.
+  expectReport(
+    whereNamed(`${capital(SHORT)}s, ${FAMILY}ra and ${FAMILY}`),
+    `his name on line 1, written "****", in "******, ****** and ****"`,
+  );
+  expectReport(whereNamed(`${FAMILY}ra\n${FAMILY}`), /^his name on line 2, written "\*{4}"/);
+  expectReport(whereNamed('MDXplora team'), undefined);
+  expectReport(masked(`${GIVEN}${FAMILY}, ${FAMILY}`), '************, ****', 'the text masked');
+  expectReport(masked(`${cut(GIVEN, 3, '&shy;')}.${familyLower}@x.org`), '***&***;*****.****@x.org', 'the text masked');
+  // The whole word around him is masked, and any word that holds his name loosely read, such as one in capitals
+  // that goes on in lower case.
+  expectReport(
+    masked(`x${FAMILY}2026q, ${FAMILY.toUpperCase()}lab and ${toned(1)}ra.`.normalize('NFC')),
+    '**********, ******* and ******.',
+    'the text masked',
+  );
+  expectReport(masked('MDXplora team, main lab'), 'MDXplora team, main lab', 'the text masked');
+});
+
+// Three letters in a row of his given or family name, or of a handle of his, in any case, as a report shows them or
+// with its escapes and zero bytes left out, as text in UTF-16 would show them.
+const handles = [
+  GIVEN + FAMILY,
+  FAMILY + GIVEN,
+  GIVEN[0] + SHORT[0] + FAMILY,
+  FAMILY + GIVEN[0] + SHORT[0],
+  GIVEN + FAMILY[0],
+];
+const PARTS = new Set(
+  [GIVEN, FAMILY, ...handles].flatMap((word) =>
+    [...word.toLowerCase()].slice(2).map((_, at) => word.toLowerCase().slice(at, at + 3)),
+  ),
+);
+const leaks = (report = '') => {
+  const views = [report, report.replace(/\\u\{[0-9a-f]+\}|\0/g, '')].map((view) => view.toLowerCase());
+  return [...PARTS].filter((part) => views.some((view) => view.includes(part)));
+};
+
+test('a report never shows part of his name, wherever the text around him is cut', () => {
+  // Other mentions of him at each distance from the one found, up to past the text shown, in any form found, and in
+  // a form the check misses beside it.
+  const others = [
+    GIVEN + FAMILY,
+    FAMILY,
+    capital(SHORT),
+    cut(GIVEN, 3, '&shy;'),
+    `${cut(GIVEN, 3, '<b>')}</b>.${familyLower}`,
+    `${GIVEN[0]}.${familyLower}`,
+    `${FAMILY.toUpperCase()}lab`,
+    `${SHORT}s`,
+    `${toned(0)} ${toned(1)}`.normalize('NFD'),
+    [...GIVEN].map(decimal).join(''),
+  ];
+  for (const other of others)
+    for (let gap = 0; gap <= 20; gap++) {
+      const filler = ' x'.repeat(gap);
+      for (const text of [
+        `${GIVEN}${filler} ${other}`,
+        `${other}${filler} ${GIVEN}`,
+        `${other}${filler} ${FAMILY}${filler} ${other}`,
+      ]) {
+        const reports = [whereNamed(text), masked(text), whereNamed(text, namedInBytes)];
+        expect(reports[0] !== undefined, example(other, gap)).toBe(true);
+        for (const report of reports) expect(leaks(report).length, `${example(text, gap)}: ${starred(report)}`).toBe(0);
+      }
+    }
+  // Nor in a file read as bytes, where the text around him is not text, or is text in UTF-16 or with references.
+  const referenced = written(GIVEN, 3, (letter) => `&#x${hex(letter).toUpperCase()};`);
+  const bytes = Buffer.concat([Buffer.alloc(30, 0x80), Buffer.from(`${FAMILY}\0\x01${GIVEN}${FAMILY}`, 'latin1')]);
+  const dir = mkdtempSync(join(tmpdir(), 'leaks-'));
+  try {
+    const files: [string, Buffer][] = [
+      ['bytes.png', bytes],
+      // Text in UTF-16, of either byte order, in a file read as text and in one read as bytes, with a mention the check
+      // misses beside one it finds.
+      ...['utf16le', 'utf16be'].flatMap((order): [string, Buffer][] => {
+        const notes = Buffer.from(`Notes by ${capital(SHORT)}s and ${capital(SHORT)} ${FAMILY}`, 'utf16le');
+        const ordered = order === 'utf16le' ? notes : Buffer.from(notes).swap16();
+        return [
+          [`notes-${order}.md`, ordered],
+          [`notes-${order}.woff`, ordered],
+        ];
+      }),
+      // The XMP of a JPEG, with a letter of his given name as a reference, beside his family name.
+      [
+        'photo.jpg',
+        Buffer.concat([
+          Buffer.from([0xff, 0xd8, 0xff, 0xe1, 0, 0]),
+          Buffer.from(`http://ns.adobe.com/xap/1.0/\0<dc:creator>${referenced} ${FAMILY}</dc:creator>`),
+        ]),
+      ],
+    ];
+    for (const [name, content] of files) {
+      writeFileSync(join(dir, name), content);
+      const report = whereNamedInFile(join(dir, name));
+      expect(report !== undefined, `${name} is found to name him`).toBe(true);
+      expect(leaks(report).length, `${name}: ${starred(report)}`).toBe(0);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// A PNG of the chunks given, each a type and its data.
+function png(...chunks: [string, Buffer][]): Buffer {
+  return Buffer.concat([
+    Buffer.from('\x89PNG\r\n\x1a\n', 'latin1'),
+    ...chunks.map(([type, data]) => {
+      const length = Buffer.alloc(4);
+      length.writeUInt32BE(data.length);
+      return Buffer.concat([length, Buffer.from(type, 'latin1'), data, Buffer.alloc(4)]);
+    }),
+  ]);
+}
+// A WOFF font of one name table, compressed, and its metadata, as given.
+function woff(name: Buffer, metadata?: Buffer): Buffer {
+  const table = deflateSync(name);
+  const meta = metadata ? deflateSync(metadata) : Buffer.alloc(0);
+  const header = Buffer.alloc(44 + 20);
+  header.write('wOFF', 0, 'latin1');
+  header.writeUInt32BE(0x00010000, 4);
+  header.writeUInt16BE(1, 12);
+  // The name table's entry: its tag, offset, length, and length once inflated.
+  header.write('name', 44, 'latin1');
+  header.writeUInt32BE(64, 48);
+  header.writeUInt32BE(table.length, 52);
+  header.writeUInt32BE(name.length, 56);
+  if (metadata) {
+    header.writeUInt32BE(64 + table.length, 24);
+    header.writeUInt32BE(meta.length, 28);
+  }
+  return Buffer.concat([header, table, meta]);
+}
+// An icon of one image, a PNG, as given.
+function ico(image: Buffer): Buffer {
+  const header = Buffer.from([0, 0, 1, 0, 1, 0, 16, 16, 0, 0, 1, 0, 32, 0, 0, 0, 0, 0, 22, 0, 0, 0]);
+  header.writeUInt32LE(image.length, 14);
+  return Buffer.concat([header, image]);
+}
+// A WOFF2 font of one name table, and its metadata, as given.
+function woff2(name: Buffer, metadata?: Buffer): Buffer {
+  const tables = brotliCompressSync(name);
+  const meta = metadata ? brotliCompressSync(metadata) : Buffer.alloc(0);
+  // The directory: the name table's flags (its known tag, 5, untransformed), then its length in UIntBase128.
+  const directory = Buffer.from([
+    5,
+    ...(name.length < 128 ? [name.length] : [0x80 | (name.length >> 7), name.length & 0x7f]),
+  ]);
+  const header = Buffer.alloc(48);
+  header.write('wOF2', 0, 'latin1');
+  header.writeUInt32BE(0x00010000, 4);
+  header.writeUInt16BE(1, 12);
+  header.writeUInt32BE(tables.length, 20);
+  if (metadata) {
+    header.writeUInt32BE(48 + directory.length + tables.length, 28);
+    header.writeUInt32BE(meta.length, 32);
+  }
+  return Buffer.concat([header, directory, tables, meta]);
+}
+
+test('the check for the operator finds his name in the bytes of an image or a font, and says where', () => {
+  const author = Buffer.from(`Author\0${OPERATOR}`, 'latin1');
+  expect(namedInBytes(`\x89PNG\r\n\x1a\n\0\0\0\x19tEXt${author.toString('latin1')}\x8a\x1f`)).toBe('his name');
+  expect(namedInBytes([...FAMILY].map((letter) => `\0${letter}`).join('') + '\0\x01')).toBe('his name');
+  expect(namedInBytes('\x89PNG\r\n\x1a\nIHDR\0\0\0\x10tEXtSoftware\0MDXplora')).toBeUndefined();
+  // A binary file is reported by its byte, not its line.
+  expectReport(whereNamedInBytes(png(['tEXt', author])), /^his name at byte 23, written "\*{8}"/);
+  // Text in UTF-16 is shown as it reads, without its zero bytes.
+  expectReport(
+    whereNamedInBytes(Buffer.from(`Notes by ${OPERATOR}.`, 'utf16le')),
+    'his name at byte 18, written "********", in "Notes by ******** ****."',
+  );
+  // Text a PNG holds compressed, in a zTXt or iTXt chunk, or in its colour profile, which its bytes do not show.
+  const compressed = (file: Buffer) => {
+    expect(namedInBytes(file.toString('latin1')), 'named in the bytes as they are').toBeUndefined();
+    return whereNamedInBytes(file);
+  };
+  const deflated = (text: string) => deflateSync(Buffer.from(text, 'utf8'));
+  expectReport(
+    compressed(png(['zTXt', Buffer.concat([Buffer.from('Author\0\0'), deflated(OPERATOR)])])),
+    /^his name at byte 0, written "\*{8}", in "\*{8} \*{4}", in its zTXt chunk at byte 8, inflated$/,
+  );
+  const itxt = (text: string) => Buffer.concat([Buffer.from('XML:com.adobe.xmp\0\x01\0en\0\0'), deflated(text)]);
+  expectReport(
+    compressed(png(['iTXt', itxt(`<dc:creator>${cut(GIVEN, 5, '&#173;')}</dc:creator>`)])),
+    /in its iTXt chunk at byte 8, inflated$/,
+  );
+  expectReport(
+    compressed(png(['iCCP', Buffer.concat([Buffer.from('ICC\0\0'), deflated(`cprt ${FAMILY}`)])])),
+    /in its iCCP chunk at byte 8, inflated$/,
+  );
+  expectReport(
+    compressed(png(['zTXt', Buffer.concat([Buffer.from('Software\0\0'), deflated('MDXplora')])])),
+    undefined,
+  );
+  // A font's tables and metadata, which WOFF2 compresses: a name in UTF-16, as the name table writes it, and in XML.
+  const utf16 = (text: string) => Buffer.from(text, 'utf16le').swap16();
+  expectReport(
+    compressed(woff2(Buffer.concat([Buffer.alloc(200), utf16(`Designer: ${OPERATOR}`)]))),
+    /in its tables, decompressed$/,
+  );
+  expectReport(
+    compressed(
+      woff2(Buffer.alloc(10), Buffer.from(`<metadata>${' '.repeat(200)}<vendor name="${OPERATOR}"/></metadata>`)),
+    ),
+    /in its metadata, decompressed$/,
+  );
+  expectReport(whereNamedInBytes(woff2(utf16('Inter Variable'))), undefined);
+  // And those WOFF compresses, with zlib.
+  expectReport(
+    compressed(woff(Buffer.concat([Buffer.alloc(200), utf16(`Designer: ${OPERATOR}`)]))),
+    /in its name table, inflated$/,
+  );
+  expectReport(
+    compressed(
+      woff(Buffer.alloc(10), Buffer.from(`<metadata>${' '.repeat(200)}<vendor name="${OPERATOR}"/></metadata>`)),
+    ),
+    /in its metadata, inflated$/,
+  );
+  expectReport(whereNamedInBytes(woff(utf16('Inter'))), undefined);
+  // A PNG inside another file, as an icon holds one.
+  expectReport(
+    compressed(ico(png(['zTXt', Buffer.concat([Buffer.from('Author\0\0'), deflated(OPERATOR)])]))),
+    /in its zTXt chunk at byte 30, inflated$/,
+  );
+  // Metadata in UTF-8, read as text: with a character not shown, as a PNG's iTXt holds it uncompressed, or with a
+  // reference, as in the XMP of a JPEG.
+  const plain = Buffer.from(`XML:com.adobe.xmp\0\0\0en\0\0<dc:creator>${cut(GIVEN, 5, '\u200b')}</dc:creator>`);
+  expectReport(compressed(png(['iTXt', plain])), /^his name on line \d+, .*, in its text read as UTF-8$/);
+  const xmp = `http://ns.adobe.com/xap/1.0/\0<dc:creator>${cut(GIVEN, 5, '&#173;')}</dc:creator>`;
+  expectReport(
+    compressed(Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe1, 0, 0]), Buffer.from(xmp)])),
+    /^his name on line \d+, .*, in its text read as UTF-8$/,
+  );
+  // A font the site serves decompresses in full: the family names in its name table are read.
+  const inter = readdirSync('node_modules/@fontsource-variable/inter/files').find((file) => file.endsWith('.woff2'))!;
+  const [tables] = compressedIn(readFileSync(join('node_modules/@fontsource-variable/inter/files', inter)));
+  expect(tables.text.includes(utf16('Inter')), inter).toBe(true);
+  const [name] = compressedIn(readFileSync('node_modules/@fontsource/inter/files/inter-latin-400-normal.woff')).filter(
+    ({ where }) => where === 'its name table, inflated',
+  );
+  expect(name.text.includes(utf16('Inter')), 'a WOFF font').toBe(true);
+});
+
+test('the check for the operator reads files of a known kind, and only those git tracks and that are there', () => {
+  for (const file of ['x.png', 'a/b.ts', 'CNAME', '.nvmrc', 'font.woff2', 'icon.ICO'])
+    expect(isKnownKind(file), file).toBe(true);
+  for (const file of ['x.pdf', 'a/b.zip', 'notes.docx']) expect(isKnownKind(file), file).toBe(false);
+  const dir = mkdtempSync(join(tmpdir(), 'tracked-'));
+  try {
+    for (const file of ['kept.ts', 'deleted.ts', 'staged.ts']) writeFileSync(join(dir, file), 'text');
+    execFileSync('git', ['init', '-q'], { cwd: dir });
+    execFileSync('git', ['add', '.'], { cwd: dir });
+    // One deleted from the working tree only, and one whose deletion is staged.
+    rmSync(join(dir, 'deleted.ts'));
+    execFileSync('git', ['rm', '-qf', 'staged.ts'], { cwd: dir });
+    expect(trackedFiles(dir)).toEqual(['kept.ts']);
+    // A link, read as the path it holds, even when that path is not there; a path that names him, in a file's name
+    // or a folder's; and text in UTF-16, here after the start of a comment, so that no reading of the file as markup
+    // finds him.
+    mkdirSync(join(dir, 'docs'));
+    mkdirSync(join(dir, `${givenLower}-${familyLower}`));
+    const named = [
+      `docs/${givenLower[0]}${familyLower}-notes.md`,
+      `${givenLower}-${familyLower}/plan.md`,
+      'docs/link.md',
+      'docs/.DS_Store',
+    ];
+    for (const file of named.slice(0, 2)) writeFileSync(join(dir, file), 'Notes on the site.');
+    symlinkSync(`../${FAMILY}/notes.md`, join(dir, 'docs', 'link.md'));
+    const utf16 = Buffer.from(`\0\x01Bud1${OPERATOR}`, 'utf16le');
+    writeFileSync(join(dir, 'docs', '.DS_Store'), Buffer.concat([Buffer.from('<!-- '), utf16]));
+    symlinkSync('kept.ts', join(dir, 'kept.pdf'));
+    execFileSync('git', ['add', '.'], { cwd: dir });
+    expectReport(
+      trackedFiles(dir).sort().join(', '),
+      [...named, 'kept.pdf', 'kept.ts'].sort().join(', '),
+      'the files tracked',
+    );
+    expect(isLink(join(dir, 'kept.pdf')) && !isLink(join(dir, 'kept.ts'))).toBe(true);
+    for (const file of named) expect(whereNamedInPathOrFile(file, dir) !== undefined, starred(file)).toBe(true);
+    expectReport(whereNamedInPathOrFile(named[0], dir), /^in its path, a handle of his on line 1/);
+    for (const file of ['kept.pdf', 'kept.ts']) expectReport(whereNamedInPathOrFile(file, dir), undefined, file);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('the operator is named on the privacy page, and nowhere else', async ({ request }) => {
+  test.skip(test.info().project.name !== 'desktop', 'the files and pages read here are the same at any width');
   for (const path of [...(await sitemapPages(request)), '/no-such-page/']) {
+    const shown = masked(path);
     const response = await request.get(path);
-    expect(response.status(), path).toBe(path === '/no-such-page/' ? 404 : 200);
+    expect(response.status(), shown).toBe(path === '/no-such-page/' ? 404 : 200);
     const html = await response.text();
     const [head, body] = html.split(/<\/head>/i);
-    expect(body, `${path} has a head and a body`).toBeDefined();
+    expect(body, `${shown} has a head and a body`).toBeDefined();
     // The head holds the metadata, the structured data and the link preview image's alt text.
-    expect(head.match(operatorName)?.[0], `${path}: metadata`).toBeUndefined();
-    if (path === '/privacy/') expect(body, path).toContain('Adekunle Aina is responsible for the personal data');
-    else expect(body.match(operatorName)?.[0], path).toBeUndefined();
+    expect(whereNamed(head), `${shown}: metadata`).toBeUndefined();
+    if (path === '/privacy/')
+      expect(body.includes(`${OPERATOR} is responsible for the personal data`), `${shown} names its controller`).toBe(
+        true,
+      );
+    else expect(whereNamed(body), shown).toBeUndefined();
+    // Every stylesheet the page links to, wherever it is served from. Styles inlined in the page are read above.
+    for (const href of stylesheetsOf(html)) {
+      const sheet = await request.get(new URL(href, response.url()).href);
+      expect(sheet.ok(), masked(`${path}: ${href}`)).toBe(true);
+      expect(whereNamed(await sheet.text()), masked(`${path}: ${href}`)).toBeUndefined();
+    }
   }
-  for (const path of ['/.well-known/security.txt', '/manifest.webmanifest', '/robots.txt']) {
-    const response = await request.get(path);
-    expect(response.ok(), path).toBe(true);
-    expect((await response.text()).match(operatorName)?.[0], path).toBeUndefined();
-  }
+  // Every file of the build, as it is served: the pages, the sitemaps, the stylesheets and any script, the icons, the
+  // images and fonts, and all that is copied from public/, such as CNAME, robots.txt or a humans.txt, and the path of
+  // each. The privacy page itself is left out, its head having been read above, but not its path. A file of no known
+  // kind fails here, so that it is read.
+  const built = filesUnder('dist');
+  expect(
+    built.filter((file) => !isKnownKind(file)).map((file) => masked(file)),
+    'built files of no known kind',
+  ).toEqual([]);
+  for (const file of ['404.html', 'CNAME', join('og', 'home.png')])
+    expect(
+      built.includes(join('dist', file)),
+      `the build holds ${file}, looked for only to show its files were found`,
+    ).toBe(true);
+  const privacyPage = join('dist', 'privacy', 'index.html');
+  expect(whereNamed(privacyPage), 'the path of the privacy page').toBeUndefined();
+  for (const file of built.filter((file) => file !== privacyPage))
+    expect(whereNamedInPathOrFile(file), masked(file)).toBeUndefined();
+  // The source, published with the repository: every file git tracks, comments included, from the workflows and
+  // settings to the scripts and tests, this file among them, and the path of each. Left out is the privacy page's
+  // source, which names him, but not its path. A tracked file of no known kind fails here, as a built one does; a link
+  // is read as the path it holds, whatever its name.
+  const privacySource = 'src/pages/privacy.astro';
+  const tracked = trackedFiles();
+  expect(
+    tracked.filter((file) => !isKnownKind(file) && !isLink(file)).map((file) => masked(file)),
+    'tracked files of no known kind',
+  ).toEqual([]);
+  for (const file of ['README.md', 'src/data/cards.ts', 'tests/site.spec.ts'])
+    expect(tracked.includes(file), `git tracks ${file}, looked for only to show its files were found`).toBe(true);
+  expect(tracked.includes(privacySource), 'the privacy page, left out here, is where it was').toBe(true);
+  expect(whereNamed(privacySource), 'the path of the privacy page').toBeUndefined();
+  for (const file of tracked.filter((file) => file !== privacySource))
+    expect(whereNamedInPathOrFile(file), masked(file)).toBeUndefined();
+});
+
+test('no link preview image draws the operator by name', () => {
+  // The image's words are drawn as pixels, so they are read from the source as TypeScript reads it, which the scan of
+  // the source above does not do in full: it reads no line continuation or identity escape, such as \k.
+  for (const { slug, title, text } of drawnCards())
+    for (const words of [title, text]) expect(whereNamed(words), masked(`${slug}: ${words}`)).toBeUndefined();
 });
 
 test('the privacy page answers Do Not Track and says what Formspree receives', async ({ page }) => {
   await page.goto('/privacy/');
-  const prose = page.locator('.prose');
-  await expect(prose).toContainText('Do Not Track');
-  await expect(prose).toContainText('Global Privacy Control');
-  await expect(prose).toContainText('your IP address and the name of your browser');
-  await expect(prose).toContainText('With JavaScript turned off');
-  // Mail written to the address directly takes the same route as the form's.
-  await expect(prose).toContainText(
+  // The page names the operator, so its text is never printed.
+  const said = await textOf(page.locator('.prose'));
+  for (const words of [
+    'Do Not Track',
+    'Global Privacy Control',
+    'your IP address and the name of your browser',
+    'With JavaScript turned off',
+    // Mail written to the address directly takes the same route as the form's.
     "Everything sent to info@mdxplora.com, from the form or written to it directly, is forwarded by Cloudflare Email Routing to our mailbox in Google's Gmail.",
-  );
-  // The page names who is responsible for that data, and how long messages are kept.
-  await expect(prose).toContainText('Adekunle Aina is responsible for the personal data this site collects');
-  await expect(prose).toContainText('You can reach him at info@mdxplora.com.');
-  await expect(prose).toContainText('We keep messages for one year after our last contact with you, then delete them.');
+    // Who is responsible for that data, and how long messages are kept.
+    'You can reach him at info@mdxplora.com.',
+    'We keep messages for one year after our last contact with you, then delete them.',
+  ])
+    expectText(said, words, 'the privacy page');
+  expect(
+    said.includes(`${OPERATOR} is responsible for the personal data this site collects`),
+    'names its controller',
+  ).toBe(true);
 });
 
 test('the privacy page names everything the site keeps in the browser', async ({ page }) => {
@@ -435,9 +1345,13 @@ test('the privacy page names everything the site keeps in the browser', async ({
     const text = readFileSync(join('src', file), 'utf8');
     if (text.includes('localStorage.setItem')) for (const m of text.matchAll(/'(mdxplora-[a-z-]+)'/g)) stored.add(m[1]);
   }
-  expect([...stored].sort()).toEqual(Object.keys(described).sort());
+  expect(
+    [...stored].sort().map((key) => masked(key)),
+    'the keys the site stores',
+  ).toEqual(Object.keys(described).sort());
   await page.goto('/privacy/');
-  for (const words of Object.values(described)) await expect(page.locator('.prose')).toContainText(words);
+  const said = await textOf(page.locator('.prose'));
+  for (const words of Object.values(described)) expectText(said, words, 'the privacy page');
 });
 
 test('the setting an earlier version stored for its animation is deleted, and the theme kept', async ({ page }) => {
@@ -448,7 +1362,7 @@ test('the setting an earlier version stored for its animation is deleted, and th
   });
   await page.goto('/');
   const kept = await page.evaluate(() => Object.keys(localStorage).sort());
-  expect(kept).toEqual(['mdxplora-theme']);
+  expect(kept.map((key) => masked(key))).toEqual(['mdxplora-theme']);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 });
 
@@ -526,7 +1440,10 @@ test('every heading is a plain phrase without a full stop', async ({ page }) => 
     );
     expect(headings.length, path).toBeGreaterThan(0);
     for (const { text, opensWithCode } of headings)
-      expect(headingFaults(text, opensWithCode), `${path}: ${text}`).toEqual([]);
+      expect(
+        headingFaults(text, opensWithCode).map((fault) => masked(fault)),
+        masked(`${path}: ${text}`),
+      ).toEqual([]);
   }
   // Each stage of the pipeline is headed by its name as code, and nothing else.
   await page.goto('/');
@@ -541,9 +1458,16 @@ test('every heading is a plain phrase without a full stop', async ({ page }) => 
           : h.outerHTML,
       ),
     );
-  expect(stages).toEqual(['Config', 'setup', 'simulation', 'analysis', 'report', 'Manifest']);
-  await expect(page.locator('h1')).toHaveText('From question to publishable molecular dynamics');
-  await expect(page.locator('main a[href="/services/"]')).toHaveText('About our services');
+  expect(stages.map((stage) => masked(stage ?? ''))).toEqual([
+    'Config',
+    'setup',
+    'simulation',
+    'analysis',
+    'report',
+    'Manifest',
+  ]);
+  expectExactly(await textOf(page.locator('h1')), 'From question to publishable molecular dynamics', 'the headline');
+  expectExactly(await textOf(page.locator('main a[href="/services/"]')), 'About our services', 'the link to services');
 });
 
 test('an unknown address gets the not-found page, which claims no address of its own', async ({ page }) => {
@@ -607,6 +1531,13 @@ async function captureForm(page: Page) {
   return sent;
 }
 
+// The form's outcome, once it says the words given, which are reported without what it said instead.
+async function expectStatus(page: Page, words: string) {
+  await expect
+    .poll(async () => (await textOf(page.locator('.status'))).includes(words), { message: `the form says "${words}"` })
+    .toBe(true);
+}
+
 async function fillContact(page: Page) {
   await page.getByLabel('Name', { exact: true }).fill('Ada Lovelace');
   await page.getByLabel('Email', { exact: true }).fill('ada@example.org');
@@ -618,9 +1549,9 @@ test('a message arrives with a subject naming its topic and sender', async ({ pa
   await page.goto('/contact/?topic=training');
   await fillContact(page);
   await page.getByRole('button', { name: 'Send' }).click();
-  await expect(page.locator('.status')).toContainText('Thank you');
-  expect(sent).toHaveLength(1);
-  expect(sent[0]._subject).toBe('MDXplora website: Training enquiry from Ada Lovelace');
+  await expectStatus(page, 'Thank you');
+  expect(sent.length, 'messages sent').toBe(1);
+  expectExactly(sent[0]._subject, 'MDXplora website: Training enquiry from Ada Lovelace', 'the subject sent');
   expect(sent[0].topic).toBe('training');
   // The outcome sits beside the button, in the form's own style, not that of the planned note.
   await expect(page.locator('.status')).toHaveCSS('border-left-width', '0px');
@@ -633,16 +1564,16 @@ test('a form sent incomplete says what is missing, marks it, and focus lands on 
   await page.getByLabel('Name', { exact: true }).fill('Ada Lovelace');
   await page.getByLabel('Email', { exact: true }).fill('not an address');
   await page.getByRole('button', { name: 'Send' }).click();
-  await expect(page.locator('.status')).toContainText('Please fill in');
+  await expectStatus(page, 'Please fill in');
   await expect(page.getByLabel('Email', { exact: true })).toHaveAttribute('aria-invalid', 'true');
   await expect(page.getByLabel('Message', { exact: true })).toHaveAttribute('aria-invalid', 'true');
   await expect(page.getByLabel('Name', { exact: true })).not.toHaveAttribute('aria-invalid');
-  expect(sent).toHaveLength(0);
+  expect(sent.length, 'messages sent').toBe(0);
 
   await fillContact(page);
   await expect(page.getByLabel('Email', { exact: true })).not.toHaveAttribute('aria-invalid');
   await page.getByRole('button', { name: 'Send' }).click();
-  await expect(page.locator('.status')).toContainText('Thank you');
+  await expectStatus(page, 'Thank you');
   await expect(page.locator('.status')).toBeFocused();
 });
 
@@ -695,7 +1626,12 @@ test.describe('without JavaScript', () => {
       });
       await scripted.close();
       expect(without['--bg']).toBe(scheme === 'light' ? '#faf9f5' : '#1c1c1d');
-      expect(without).toEqual(expected);
+      const names = [...new Set([...Object.keys(without), ...Object.keys(expected)])];
+      expect(
+        names
+          .filter((token) => without[token] !== expected[token])
+          .map((token) => masked(`${token} is ${without[token]}, and with scripts ${expected[token]}`)),
+      ).toEqual([]);
     });
   }
 
@@ -728,7 +1664,7 @@ test('early-access questions show for that topic only, and are sent only with it
   await expect(early).toBeVisible();
   await early.getByLabel('Where you work').selectOption('An academic research group');
   const compute = early.getByLabel('Compute you have now');
-  await expect(compute.locator('option')).toHaveText([
+  expect((await compute.locator('option').allTextContents()).map((option) => masked(option.trim()))).toEqual([
     'Choose one',
     'None yet',
     'A workstation with a GPU',
@@ -746,21 +1682,22 @@ test('early-access questions show for that topic only, and are sent only with it
 
   await fillContact(page);
   await page.getByRole('button', { name: 'Send' }).click();
-  await expect(page.locator('.status')).toContainText('Thank you');
-  expect(sent[0]).toMatchObject({
+  await expectStatus(page, 'Thank you');
+  for (const [field, value] of Object.entries({
     _subject: 'MDXplora website: Early access request from Ada Lovelace',
     'where you work': 'An academic research group',
     'compute you have now': 'A cluster (at a university, a national centre or in industry)',
     'what you want to simulate': 'A small protein in water.',
-  });
+  }))
+    expectExactly(sent[0]?.[field], value, `the field "${field}" sent`);
 
   // A different topic sends none of them.
   await page.getByLabel('What is it about?').selectOption('support');
   await fillContact(page);
   await page.getByRole('button', { name: 'Send' }).click();
   await expect.poll(() => sent.length).toBe(2);
-  expect(Object.keys(sent[1])).not.toContain('where you work');
-  expect(Object.keys(sent[1])).not.toContain('what you want to simulate');
+  for (const field of ['where you work', 'what you want to simulate'])
+    expect(field in sent[1], `the field "${field}" is sent`).toBe(false);
 });
 
 test('security reports have somewhere to go (RFC 9116)', async ({ request }) => {
@@ -772,17 +1709,26 @@ test('security reports have somewhere to go (RFC 9116)', async ({ request }) => 
       .split('\n')
       .map((line) => line.split(/: (.*)/s).slice(0, 2)),
   );
-  expect(fields.Contact).toBe('mailto:info@mdxplora.com');
-  expect(fields.Canonical).toBe('https://mdxplora.com/.well-known/security.txt');
+  expectExactly(fields.Contact, 'mailto:info@mdxplora.com', 'its contact');
+  expectExactly(fields.Canonical, 'https://mdxplora.com/.well-known/security.txt', 'its address');
   const daysLeft = (Date.parse(fields.Expires) - Date.now()) / 86_400_000;
   expect(daysLeft, 'expires in the future, less than a year ahead').toBeGreaterThan(0);
   expect(daysLeft).toBeLessThan(365);
 });
 
+// JSON a page or the build gives, read, or an error that says where without what it holds.
+function parsed(json: string, where: string) {
+  try {
+    return JSON.parse(json);
+  } catch (error) {
+    throw new Error(masked(`${where} is not JSON: ${(error as Error).message}`));
+  }
+}
+
 test('the icons, the manifest and the structured data all resolve', async ({ page, request }) => {
   const png = async (path: string) => {
     const response = await request.get(path);
-    expect(response.status(), path).toBe(200);
+    expect(response.status(), masked(path)).toBe(200);
     const body = await response.body();
     return [body.readUInt32BE(16), body.readUInt32BE(20)];
   };
@@ -792,28 +1738,29 @@ test('the icons, the manifest and the structured data all resolve', async ({ pag
   expect(ico.status()).toBe(200);
   expect((await ico.body()).readUInt16LE(4), 'images in favicon.ico').toBe(3);
 
-  const manifest = await (await request.get('/manifest.webmanifest')).json();
-  expect(manifest.name).toBe('MDXplora');
+  const manifest = parsed(await (await request.get('/manifest.webmanifest')).text(), 'the manifest');
+  expectExactly(manifest.name, 'MDXplora', "the manifest's name");
   for (const icon of manifest.icons) {
     const [w, h] = icon.sizes.split('x').map(Number);
-    expect(await png(icon.src), icon.src).toEqual([w, h]);
+    expect(await png(icon.src), masked(icon.src)).toEqual([w, h]);
   }
 
   await page.goto('/');
-  const graph = JSON.parse((await page.locator('script[type="application/ld+json"]').textContent())!)['@graph'];
+  const data = (await page.locator('script[type="application/ld+json"]').textContent()) ?? '';
+  const graph = parsed(data, 'the structured data')['@graph'];
   const organization = graph.find((node: { '@type': string }) => node['@type'] === 'Organization');
-  expect(organization.name).toBe('MDXplora');
+  expectExactly(organization.name, 'MDXplora', "the structured data's organisation");
   expect(await png(new URL(organization.logo).pathname)).toEqual([512, 512]);
 });
 
 test('the browser icon is the current mark, at an address that changes with it', async ({ page, request }) => {
   await page.goto('/');
   const href = await page.locator('link[rel="icon"][type="image/svg+xml"]').getAttribute('href');
-  expect(href).toMatch(/^\/favicon\.svg\?v=[0-9a-f]{8}$/);
+  expectText(href, /^\/favicon\.svg\?v=[0-9a-f]{8}$/, `the address ${href}`);
   const svg = await (await request.get(href!)).text();
   expect(svg.match(/<circle/g)?.length, 'the droplet has seven atoms').toBe(7);
-  expect(svg, 'in white on solid blue').toMatch(/<rect [^>]*fill="#155ad1"/);
-  expect(svg).not.toMatch(/gradient/i);
+  expectText(svg, /<rect [^>]*fill="#155ad1"/, 'the icon, in white on solid blue,');
+  expectText(svg, /gradient/i, 'the icon', false);
 });
 
 // The smallest gap between two atoms of the droplet, in pixels when its 32-unit grid is drawn `size` pixels wide.
@@ -859,7 +1806,8 @@ test('the browser icons carry the small atoms, at an address that changes with t
     .update(iconVersion + svg)
     .digest('hex')
     .slice(0, 8);
-  for (const href of [svgHref, icoHref]) expect(new URL(href, page.url()).searchParams.get('v'), href).toBe(expected);
+  for (const href of [svgHref, icoHref])
+    expect(new URL(href, page.url()).searchParams.get('v'), masked(href)).toBe(expected);
 
   // favicon.ico holds the SVG's drawing at 16 and 32 px, and the full mark at 48.
   const ico = await (await request.get(icoHref)).body();
@@ -943,7 +1891,11 @@ test('the home page moves only when asked', async ({ page }) => {
     return Boolean(heading.compareDocumentPosition(preview) & Node.DOCUMENT_POSITION_FOLLOWING);
   });
   expect(order, 'the preview follows the headline').toBe(true);
-  await expect(page.locator('.hero figure.preview figcaption')).toHaveText('A preview of MDXplora as planned.');
+  expectExactly(
+    await textOf(page.locator('.hero figure.preview figcaption')),
+    'A preview of MDXplora as planned.',
+    "the preview's caption",
+  );
 });
 
 test('"Your data stays yours" sits under the text about compute, not alone in a column', async ({ page }) => {
@@ -954,7 +1906,7 @@ test('"Your data stays yours" sits under the text about compute, not alone in a 
       section.locator(part).evaluate((el) => el.getBoundingClientRect().toJSON()),
     ),
   );
-  await expect(section.locator('.owned h3')).toHaveText('Your data stays yours');
+  expectExactly(await textOf(section.locator('.owned h3')), 'Your data stays yours', 'the heading');
   expect(Math.abs(owned.left - head.left), 'in line with the text').toBeLessThanOrEqual(1);
   expect(owned.top, 'below the text').toBeGreaterThanOrEqual(head.bottom);
   expect(owned.width, 'no wider than the text').toBeLessThanOrEqual(head.width + 1);
@@ -974,11 +1926,11 @@ test('sign-in appears only when the service address is set, and leads there', as
   const targets = new Set(await everywhere.evaluateAll((links) => links.map((a) => (a as HTMLAnchorElement).href)));
   expect(targets.size).toBe(1);
   const [target] = [...targets];
-  expect(target).toMatch(/^https:\/\/[a-z0-9.-]+\/$/);
+  expectText(target, /^https:\/\/[a-z0-9.-]+\/$/, `the address ${target}`);
   // In the footer, it is the last of the platform's links.
   await expect(page.locator('footer a', { hasText: /^Sign in$/ })).toHaveCount(1);
   const platform = page.locator('footer nav[aria-label="Platform"] a');
-  await expect(platform.last()).toHaveText('Sign in');
+  expectExactly(await textOf(platform.last()), 'Sign in', "the platform's last link");
   await expect(platform.last()).toBeVisible();
   if (isMobile) {
     await page.locator('.menu-toggle').click();
@@ -1029,7 +1981,7 @@ for (const { label, javaScriptEnabled, fontSize, narrow } of largerText) {
           const under = el.getBoundingClientRect().top < header.getBoundingClientRect().bottom - 1;
           return under ? el.outerHTML.slice(0, 60) : null;
         });
-        if (name) hidden.push(name);
+        if (name) hidden.push(masked(name));
       }
       expect(hidden).toEqual([]);
     });
