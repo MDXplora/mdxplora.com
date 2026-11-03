@@ -1470,6 +1470,15 @@ test('every heading is a plain phrase without a full stop', async ({ page }) => 
   expectExactly(await textOf(page.locator('main a[href="/services/"]')), 'About our services', 'the link to services');
 });
 
+test('the title each link preview image draws is a plain phrase without a full stop', () => {
+  // The image heads its card on other sites, in plain type with no code, so its title is held to the same rules.
+  for (const { slug, title } of drawnCards())
+    expect(
+      headingFaults(title).map((fault) => masked(fault)),
+      masked(`${slug}: ${title}`),
+    ).toEqual([]);
+});
+
 test('an unknown address gets the not-found page, which claims no address of its own', async ({ page }) => {
   const response = await page.goto('/no-such-page/');
   expect(response?.status()).toBe(404);
