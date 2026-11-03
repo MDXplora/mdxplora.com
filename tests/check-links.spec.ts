@@ -587,6 +587,61 @@ test('the controls and spaces around an address are stripped, as browsers strip 
   );
 });
 
+test('a tab or line break inside an address is removed, one or several, as browsers remove them', () => {
+  const run = checkLinks({
+    'index.html': html(
+      '<h1 id="top">Home</h1>' +
+        // One inside an address, then two or more.
+        '<a href="/ab\tout/">1</a><a href="/ab\rout/">2</a><a href="/ab\nout/">3</a><a href="/about/#te\tam">4</a>' +
+        '<a href="/a\tbo\nut/">5</a><a href="/ab\r\nout/">6</a><a href="/a\tb\to\tu\tt/#t\re\na\tm">7</a>' +
+        '<a href="https://mdxplora.com/ab\tout/#te\nam">8</a><img src="/o\tk\n.png" alt="">' +
+        // Broken links, reported without them.
+        '<a href="/missing\t-tab/">9</a><a href="/missing\n-lf/">10</a><a href="/missing\r-cr/">11</a>' +
+        '<a href="/miss\ting\n-two/">12</a><a href="/miss\r\ning-crlf/">13</a><a href="#no\twh\nere">14</a>',
+      // The HTML parser reads a CR in the markup as a LF; structured data writes it as \r, so it stays a CR.
+      jsonLd({ '@context': 'https://schema.org', url: '/ab\tou\nt/', image: '/missing\t-in\r-data.png' }),
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(
+    [
+      '/missing-tab/',
+      '/missing-lf/',
+      '/missing-cr/',
+      '/missing-two/',
+      '/missing-crlf/',
+      '#nowhere (no element with id "nowhere")',
+      '/missing-in-data.png',
+    ].sort(),
+  );
+});
+
+test('U+007F at either end of an address is kept, as browsers keep it', () => {
+  // It is no C0 control, so it is not stripped: at the end it stays in the address, and at the start it makes the
+  // address path-relative, which this check does not read.
+  const del = '\u007f';
+  const broken = checkLinks({
+    'index.html': html(
+      `<h1 id="top">Home</h1><a href="/about/${del}">1</a><a href="https://mdxplora.com/about/${del}">2</a>` +
+        `<a href="/about/#team${del}">3</a><a href="${del}/about/${del}">4</a>`,
+      jsonLd({ '@context': 'https://schema.org', url: `/about/${del}`, image: `${del}/missing.png` }),
+    ),
+  });
+  expect(broken.status, broken.output).toBe(1);
+  expect(broken.reported).toEqual(
+    [
+      '/about/\\u007f',
+      'https://mdxplora.com/about/\\u007f',
+      '/about/#team\\u007f (no element with id "team\\u007f")',
+    ].sort(),
+  );
+  const atStart = checkLinks({
+    'index.html': html(`<h1 id="top">Home</h1><a href="${del}/missing/">1</a><a href="${del}#nowhere">2</a>`),
+  });
+  expect(atStart.status, atStart.output).toBe(0);
+  expect(atStart.output).toContain('check-links: 0 internal links, all resolve');
+});
+
 test('the report prints every character outside printable ASCII escaped, so a reported address reads one way', () => {
   const run = checkLinks({
     'odd\u00a0page/index.html': html('<a href="/missing\u00a0nbsp/">1</a>'),
