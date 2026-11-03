@@ -206,7 +206,8 @@ test('srcset: only ASCII whitespace ends an address, as the HTML standard reads 
     ),
   });
   expect(run.status, run.output).toBe(1);
-  expect(run.reported).toEqual([`/missing${nbsp}2x.png`]);
+  // The report prints the no-break space escaped.
+  expect(run.reported).toEqual(['/missing\\u00a02x.png']);
 });
 
 test('structured data: an address given as a node reference {"@id": ...} is read', () => {
@@ -579,11 +580,74 @@ test('the controls and spaces around an address are stripped, as browsers strip 
       'https://mdxplora.com/missing-meta.png',
       'https://mdxplora.com/missing-tab-inside/',
       '/missing-id/',
-      '/ab\fout/',
+      '/ab\\fout/',
       '/missing-nul/',
       '/missing-cr.png',
     ].sort(),
   );
+});
+
+test('the report prints every character outside printable ASCII escaped, so a reported address reads one way', () => {
+  const run = checkLinks({
+    'odd\u00a0page/index.html': html('<a href="/missing\u00a0nbsp/">1</a>'),
+    'index.html': html(
+      '<h1 id="top">Home</h1><a href="/about/\u007f">1</a><a href="/ab\fout/">2</a><a href="/zero\u200bwidth/">3</a>' +
+        '<a href="/line\u2028break/">4</a><a href="/c1\u0085/">5</a><a href="/v\u000bt/">6</a>' +
+        '<a href="/tag\u{e0001}/">7</a><a href="/about/#a\\b">8</a><a href="/about/#te\u00a0am">9</a>' +
+        '<a href="/soft\u00adhyphen/">10</a><a href="/em\u2003space/">11</a><a href="/about /">12</a>' +
+        // The Hangul fillers, the blank braille pattern, noncharacters, and combining marks after no letter and after
+        // one, so that café written as one character and as a letter and its mark differ.
+        '<a href="/hf\u3164/">13</a><a href="/hw\uffa0/">14</a><a href="/cf\u115f\u1160/">15</a>' +
+        '<a href="/br\u2800/">16</a><a href="/nc\ufdd0/">17</a><a href="/nc\u{1fffe}/">18</a>' +
+        '<a href="/\u0301\u0302mark/">19</a><a href="/cafe\u0301/">20</a><a href="/caf\u00e9/">21</a>' +
+        // A Cyrillic a, the combining grapheme joiner, variation selectors, a Mongolian selector, an arrow like the
+        // report's own, and a double quote in an id.
+        '<a href="/\u0430bout/">22</a><a href="/c\u034fgj/">23</a><a href="/vs\ufe0f/">24</a>' +
+        '<a href="/vs\u{e0101}/">25</a><a href="/mn\u180b/">26</a><a href="/a\u2192b/">27</a>' +
+        '<a href="/about/#a&quot;b">28</a>',
+      // A lone surrogate, which JSON can hold and UTF-8 cannot.
+      '<script type="application/ld+json">{"url": "/lone\\ud800/"}</script>',
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(
+    [
+      '/missing\\u00a0nbsp/',
+      '/about/\\u007f',
+      '/ab\\fout/',
+      '/zero\\u200bwidth/',
+      '/line\\u2028break/',
+      '/c1\\u0085/',
+      '/v\\vt/',
+      '/tag\\u{e0001}/',
+      '/about/#a\\\\b (no element with id "a\\\\b")',
+      '/about/#te\\u00a0am (no element with id "te\\u00a0am")',
+      '/soft\\u00adhyphen/',
+      '/em\\u2003space/',
+      '/about /',
+      '/hf\\u3164/',
+      '/hw\\uffa0/',
+      '/cf\\u115f\\u1160/',
+      '/br\\u2800/',
+      '/nc\\ufdd0/',
+      '/nc\\u{1fffe}/',
+      '/\\u0301\\u0302mark/',
+      '/cafe\\u0301/',
+      '/caf\\u00e9/',
+      '/\\u0430bout/',
+      '/c\\u034fgj/',
+      '/vs\\ufe0f/',
+      '/vs\\u{e0101}/',
+      '/mn\\u180b/',
+      '/a\\u2192b/',
+      '/about/#a"b (no element with id "a\\"b")',
+      '/lone\\ud800/',
+    ].sort(),
+  );
+  // The name of the page is escaped too. Every character printed is printable ASCII, or the arrow after a page.
+  expect(run.output).toContain('  odd\\u00a0page/index.html \u2192 /missing\\u00a0nbsp/');
+  for (const line of run.output.split('\n')) expect(line).toMatch(/^[\x20-\x7e\u2192]*$/);
+  expect(run.output.match(/\u2192/g)?.length).toBe(run.reported.length);
 });
 
 test('a placeholder left in an address is reported when it is encoded too', () => {

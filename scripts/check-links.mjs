@@ -49,6 +49,13 @@
 //
 // External links are not fetched.
 //
+// The report prints every character outside printable ASCII (U+0020 to U+007E) escaped, as JavaScript writes it (\t,
+// \u007f, \u00e9, \u{e0101}). So nothing in it is shown as nothing or as blank space, as a control, a format
+// character, a variation selector or another ignorable character is, and a lone surrogate is not shown as U+FFFD; a
+// Cyrillic or Greek letter is not taken for a Latin one, and an accented letter written as one character is told apart
+// from a letter and a combining mark. A backslash is printed as \\, and a double quote in a quoted id as \", so each
+// line of the report reads one way. Only the "→" between a page and what is wrong with it is printed as it is.
+//
 // Usage: node scripts/check-links.mjs [dist]
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
@@ -291,11 +298,26 @@ function readPage(file) {
   return read.get(file);
 }
 
+// Text of the report with each character outside printable ASCII, and the backslash, escaped (see the header).
+const SHORT_ESCAPES = { '\t': '\\t', '\n': '\\n', '\v': '\\v', '\f': '\\f', '\r': '\\r', '\\': '\\\\' };
+const visible = (text) =>
+  text.replace(/[^\x20-\x7e]|\\/gu, (char) => {
+    if (Object.hasOwn(SHORT_ESCAPES, char)) return SHORT_ESCAPES[char];
+    const code = char.codePointAt(0).toString(16);
+    return code.length > 4 ? `\\u{${code}}` : `\\u${code.padStart(4, '0')}`;
+  });
+// An id in double quotes, escaped, with a double quote in it escaped too.
+const quoted = (id) => `"${visible(id).replaceAll('"', '\\"')}"`;
+
 const broken = [];
+// A line of the report: the page, then what is wrong with it, and why when that is said. The page and what is wrong are
+// escaped here, and a reason escapes the id it names, so the arrow between them is the only one printed as it is.
+const report = (page, what, why) =>
+  broken.push(`${visible(relative(DIST, page))} → ${visible(what)}${why ? ` (${why})` : ''}`);
 let checked = 0;
 for (const page of pages(DIST)) {
   const { found, problems } = readPage(page);
-  for (const problem of problems) broken.push(`${relative(DIST, page)} → ${problem}`);
+  for (const problem of problems) report(page, problem);
   // Each link as written, without what browsers strip, the address on this site it leads to, and whether it is inside
   // a noscript.
   const links = found
@@ -306,7 +328,7 @@ for (const page of pages(DIST)) {
     // A template is checked without the query and fragment its first placeholder is in, or not at all (see
     // templateBase), so a "{" left in what is checked, or "%7B" as it is encoded, is a placeholder never filled.
     if (/\{|%7b/i.test(href)) {
-      broken.push(`${relative(DIST, page)} → ${written} (a placeholder left in the address)`);
+      report(page, written, 'a placeholder left in the address');
       continue;
     }
     const [beforeHash, fragment] = href.split('#');
@@ -315,22 +337,22 @@ for (const page of pages(DIST)) {
       path = decodeURIComponent(beforeHash.split('?')[0]);
       id = fragment && decodeURIComponent(fragment);
     } catch {
-      broken.push(`${relative(DIST, page)} → ${written} (not a valid address)`);
+      report(page, written, 'not a valid address');
       continue;
     }
     const file = path ? target(path) : page;
     if (!existsSync(file)) {
-      broken.push(`${relative(DIST, page)} → ${written}`);
+      report(page, written);
     } else if (id && file.endsWith('.html')) {
       const to = readPage(file);
       // With JavaScript off, a link inside a noscript and an id inside a noscript are both there.
       if (to.ids.has(id) || (inNoscript && to.noscriptIds.has(id))) continue;
-      let reason = `no element with id "${id}"`;
+      let reason = `no element with id ${quoted(id)}`;
       if (to.noscriptIds.has(id))
-        reason = `the id "${id}" is only on or inside a noscript, which a visitor sees only with JavaScript off`;
+        reason = `the id ${quoted(id)} is only on or inside a noscript, which a visitor sees only with JavaScript off`;
       else if (to.templateIds.has(id))
-        reason = `the id "${id}" is only on or inside a template, which a link cannot reach`;
-      broken.push(`${relative(DIST, page)} → ${written} (${reason})`);
+        reason = `the id ${quoted(id)} is only on or inside a template, which a link cannot reach`;
+      report(page, written, reason);
     }
   }
 }
