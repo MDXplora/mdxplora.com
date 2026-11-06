@@ -6,7 +6,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? 'github' : 'list',
+  // Playwright's own reporter, list here and github in CI, with the operator's name masked in all it prints, as the
+  // log of each run in CI is public. See tests/lib/masked-reporter.ts.
+  reporter: [['./tests/lib/masked-reporter.ts', { reporter: process.env.CI ? 'github' : 'list' }]],
   use: {
     baseURL: 'http://localhost:4321',
     launchOptions: process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {},
