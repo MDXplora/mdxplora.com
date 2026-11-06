@@ -333,6 +333,34 @@ const WORD = /[\p{L}\p{M}\p{N}\p{Default_Ignorable_Code_Point}\0]+/gu;
 // since it goes on in lower case after capitals, is masked too.
 const loosely = (text: string) => unmarked(folded(text)).replaceAll('\0', '').toLowerCase().replace(/[il]/g, '|');
 const LOOSE_NAMES = [GIVEN, SHORT, FAMILY].map(loosely);
+// Any three letters in a row of them, read so.
+const LOOSE_PARTS = [
+  ...new Set(LOOSE_NAMES.flatMap((name) => [...name.slice(2)].map((_, at) => name.slice(at, at + 3)))),
+];
+// A word beside a part masked, with at most two characters between that are not letters or digits, that holds three letters in a row
+// of his given name, its short form or his family name, read loosely, is masked too, and so on along the text, so the
+// rest of his name is not shown beside the part found, as in an address or a name written with a hyphen.
+function besideMasked(text: string, shown: string): string {
+  const isMask = (at: number) => shown[at] === '*' && text[at] !== '*';
+  const isWord = (at: number) => /[\p{L}\p{M}\p{N}\p{Default_Ignorable_Code_Point}\0]/u.test(shown[at]);
+  const beside = (from: number, step: number) => {
+    for (let at = from, between = 0; at >= 0 && at < shown.length && between <= 2; at += step, between++) {
+      if (isMask(at)) return true;
+      if (isWord(at)) return false;
+    }
+    return false;
+  };
+  for (let before = ''; before !== shown;) {
+    before = shown;
+    shown = shown.replace(WORD, (word, at: number) => {
+      const read = loosely(word);
+      const near =
+        LOOSE_PARTS.some((part) => read.includes(part)) && (beside(at - 1, -1) || beside(at + word.length, 1));
+      return near ? hidden(word) : word;
+    });
+  }
+  return shown;
+}
 // A text with each part that names the operator masked, and the whole word around it, its letters and digits shown as
 // *, so a report does not print his name: his whole given name first, then the short form of it alone. It keeps its
 // length.
@@ -347,9 +375,10 @@ export function masked(text: string, find: Finder = namedIn): string {
       if (next === shown) return hidden(shown);
       shown = next;
     }
-  return shown.replace(WORD, (word) =>
+  shown = shown.replace(WORD, (word) =>
     LOOSE_NAMES.some((name) => loosely(word).includes(name)) ? hidden(word) : word,
   );
+  return besideMasked(text, shown);
 }
 
 // How much text a report shows on either side of where he is named, and how much more it masks before it is cut: more

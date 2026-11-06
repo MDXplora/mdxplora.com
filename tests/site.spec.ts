@@ -1040,6 +1040,19 @@ test('a report never shows part of his name, wherever the text around him is cut
         for (const report of reports) expect(leaks(report).length, `${example(text, gap)}: ${starred(report)}`).toBe(0);
       }
     }
+  // Nor the rest of his name beside a part found, past a separator or two, as in an address or a name written with a
+  // hyphen; a word beside it that holds no part of his name is shown.
+  const start = givenLower.slice(0, 3);
+  for (const [i, text] of [
+    `${capital(start)}-${SHORT}`,
+    `${capital(start)} ${capital(SHORT)}`,
+    `${start}.${SHORT}@example.org`,
+    `${start}_${familyLower}`,
+    `${start}, ${SHORT}`,
+  ].entries())
+    for (const report of [masked(text), whereNamed(text)])
+      expect(leaks(report).length, `${example(text, i)}: ${starred(report)}`).toBe(0);
+  expectReport(masked(`Thanks and ${SHORT}.`), 'Thanks and *****.', 'the text masked');
   // Nor in a file read as bytes, where the text around him is not text, or is text in UTF-16 or with references.
   const referenced = written(GIVEN, 3, (letter) => `&#x${hex(letter).toUpperCase()};`);
   const bytes = Buffer.concat([Buffer.alloc(30, 0x80), Buffer.from(`${FAMILY}\0\x01${GIVEN}${FAMILY}`, 'latin1')]);
