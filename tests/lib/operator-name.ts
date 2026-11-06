@@ -104,7 +104,8 @@ function found(text: string, whole = false): Found | undefined {
 }
 // Text without the marks on its letters, so his name is found written with the tone marks of Yoruba, all or some of
 // them: decomposed (NFD), without its combining marks, and composed again (NFC). His family name with only one mark
-// is refused as it is without any: the site, in English, has no use for it.
+// is refused as it is without any: the site, in English, has no use for it. Text without its marks is folded again, so
+// a look-alike letter with a mark, such as a Greek iota with tonos or a Cyrillic yi, is made Latin too.
 const unmarked = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').normalize('NFC');
 
 // Text with its letters written out: character references, as HTML and XML write them (&#101;, &eacute;), then
@@ -255,7 +256,9 @@ function withoutMarkup(text: string): string[] {
 export function namedIn(text: string, whole = false): Found | undefined {
   const named = (view: string) => {
     const read = folded(view);
-    return found(view, whole) ?? found(read, whole) ?? found(unmarked(read), whole);
+    return (
+      found(view, whole) ?? found(read, whole) ?? found(unmarked(read), whole) ?? found(folded(unmarked(read)), whole)
+    );
   };
   // A decoded view is read without its markup when decoding made a tag, as it does when it adds a <.
   const tags = (view: string) => view.split('<').length;
@@ -331,7 +334,11 @@ const WORD = /[\p{L}\p{M}\p{N}\p{Default_Ignorable_Code_Point}\0]+/gu;
 // A word read loosely: folded, without its marks or zero bytes, in lower case, and an i and an l taken as one letter.
 // A word that holds his given name, its short form or his family name read so, such as one the check does not find
 // since it goes on in lower case after capitals, is masked too.
-const loosely = (text: string) => unmarked(folded(text)).replaceAll('\0', '').toLowerCase().replace(/[il]/g, '|');
+const loosely = (text: string) =>
+  folded(unmarked(folded(text)))
+    .replaceAll('\0', '')
+    .toLowerCase()
+    .replace(/[il]/g, '|');
 const LOOSE_NAMES = [GIVEN, SHORT, FAMILY].map(loosely);
 // Any three letters in a row of them, read so.
 const LOOSE_PARTS = [

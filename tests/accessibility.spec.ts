@@ -523,7 +523,7 @@ function statusColoursShown(statusElements: Record<string, string[]>): StatusUse
   return [...uses].map(([use, parts]) => ({ use, parts }));
 }
 
-// Up to three of the parts that show a use, and how many more.
+// Up to three of the parts that show a use, and how many more; a part shown on several pages is counted once.
 const shownBy = (parts: string[]) =>
   `${parts.slice(0, 3).join(', ')}${parts.length > 3 ? ` and ${parts.length - 3} more` : ''}`;
 // The uses found on each page and in each theme, one line for each use, however many pages show it: the parts that
@@ -541,7 +541,7 @@ function statusReport(found: { path: string; theme: string; uses: StatusUse[] }[
     }
   return [...all].map(([use, { parts, themes }]) => {
     const pages = [...themes].map(([path, on]) => (on.length > 1 ? path : `${path} in ${on[0]}`)).join(', ');
-    return masked(`${shownBy([...parts.values()].flat())}: ${use}; on ${pages}`);
+    return masked(`${shownBy([...new Set([...parts.values()].flat())])}: ${use}; on ${pages}`);
   });
 }
 
@@ -795,7 +795,7 @@ test('the status colour check reports each use once, on every page and in either
       found.push({ path, theme, uses: await page.evaluate(statusColoursShown, statusElements) });
   }
   expect(statusReport(found)).toEqual([
-    `html::selection, body::selection, main::selection and 10 more: --warning in background-color, ${bothPasses}, ` +
+    `html::selection, body::selection, main::selection and 7 more: --warning in background-color, ${bothPasses}, ` +
       'by the rule "::selection"; on /one/, /two/',
     `a.skip-link, a.home, a: --warning in background-color, found when its token is changed${hover('a:hover')}; ` +
       'on /one/, /two/',
@@ -844,9 +844,11 @@ async function hiddenUnderHeader(page: Page, path: string): Promise<string[]> {
       const header = document.querySelector('.site-header');
       if (!el || !header || header.contains(el) || el === document.body || el.matches('.skip-link')) return null;
       const box = el.getBoundingClientRect();
-      return { top: box.top, under: header.getBoundingClientRect().bottom, name: el.outerHTML.slice(0, 80) };
+      return { top: box.top, under: header.getBoundingClientRect().bottom, name: el.outerHTML };
     });
-    if (where && where.top < where.under - 1) hidden.push(masked(`${where.name} (top ${Math.round(where.top)})`));
+    // Masked before it is cut, so no part of his name is left that the masking cannot find.
+    if (where && where.top < where.under - 1)
+      hidden.push(`${masked(where.name).slice(0, 80)} (top ${Math.round(where.top)})`);
   }
   return hidden;
 }
@@ -963,7 +965,7 @@ test('no heading has a label in capitals or spaced letters above it', async ({ p
   for (const path of pages) {
     await page.goto(path);
     const found = await page.evaluate(() => {
-      const out: string[] = [];
+      const out: [string, string][] = [];
       // Text drawn in capitals, small capitals or with letters spaced out, by an element or by its ::before or ::after.
       for (const el of document.querySelectorAll('body *')) {
         for (const pseudo of [null, '::before', '::after']) {
@@ -979,21 +981,20 @@ test('no heading has a label in capitals or spaced letters above it', async ({ p
           if (!/\p{L}/u.test(text)) continue;
           const spaced = parseFloat(style.letterSpacing) > 0.02 * parseFloat(style.fontSize);
           if (style.textTransform === 'uppercase' || style.fontVariantCaps !== 'normal' || spaced)
-            out.push(
-              `${el.tagName.toLowerCase()}.${el.getAttribute('class') ?? ''}${pseudo ?? ''}: ${text.trim().slice(0, 40)}`,
-            );
+            out.push([`${el.tagName.toLowerCase()}.${el.getAttribute('class') ?? ''}${pseudo ?? ''}`, text.trim()]);
         }
       }
       // Capitals typed as such: the line just above a heading is not a short label in capitals.
       for (const heading of document.querySelectorAll('h1, h2')) {
         const above = heading.previousElementSibling?.textContent?.trim() ?? '';
         if (above.length <= 40 && /\p{Lu}{2}/u.test(above) && above === above.toUpperCase())
-          out.push(`above "${heading.textContent?.trim()}": ${above}`);
+          out.push([`above "${heading.textContent?.trim()}"`, above]);
       }
       return out;
     });
+    // Each with up to 40 characters of its text, masked before it is cut.
     expect(
-      found.map((one) => masked(one)),
+      found.map(([at, text]) => masked(`${at}: ${text}`).slice(0, at.length + 42)),
       path,
     ).toEqual([]);
   }

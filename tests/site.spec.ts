@@ -81,7 +81,7 @@ test('every page carries the security policy and nothing on it breaks the policy
     const inline = await page.locator('script:not([src]):not([type="application/ld+json"])').allTextContents();
     for (const source of inline) {
       const hash = `'sha256-${createHash('sha256').update(source).digest('base64')}'`;
-      expectText(policy, hash, masked(`the policy of ${path}, for ${source.slice(0, 60)},`));
+      expectText(policy, hash, `the policy of ${path}, for ${masked(source).slice(0, 60)},`);
     }
     await expect(page.locator('meta[name="referrer"]')).toHaveAttribute('content', 'strict-origin-when-cross-origin');
   }
@@ -292,7 +292,7 @@ test('the README says what is planned', () => {
   const ways = readme.split('## Three ways to start')[1].split('\n## ')[0];
   const items = ways.split('\n- ').slice(1);
   expect(items.length, 'ways to start in the README').toBe(3);
-  for (const item of items) expectText(item, /\bwill\b/, `the README's way to start "${item.slice(0, 40)}"`);
+  for (const item of items) expectText(item, /\bwill\b/, `the README's way to start "${masked(item).slice(0, 40)}"`);
 });
 
 test('the answer to "Can I use MDXplora today?" says it plainly', async ({ page }) => {
@@ -651,12 +651,31 @@ function whereNamedInBytes(bytes: Buffer): string | undefined {
   }
   return undefined;
 }
+// The data of each data: address in a text written in base64, which the check of text does not read, decoded and read
+// as a file's bytes are, so the metadata of an image or a font written in a page or a stylesheet is read too. Data
+// that is not a whole image or font, as in an example in the tests, is read as it is, without what it would hold
+// compressed.
+const DATA = /data:[^,\s"'()<>]*;base64,([A-Za-z0-9+/]+=*)/gi;
+function whereNamedInData(text: string): string | undefined {
+  for (const { 1: data, index } of text.matchAll(DATA)) {
+    const bytes = Buffer.from(data, 'base64');
+    let inside: string | undefined;
+    try {
+      inside = whereNamedInBytes(bytes);
+    } catch {
+      inside = whereNamed(bytes.toString('latin1'), namedInBytes) ?? whereNamed(textIn(bytes));
+    }
+    if (inside) return `${inside}, in the data: address on line ${text.slice(0, index).split('\n').length}`;
+  }
+  return undefined;
+}
 function whereNamedInFile(file: string): string | undefined {
   try {
     if (isLink(file)) return whereNamed(readlinkSync(file));
     const bytes = readFileSync(file);
-    if (BINARY_FILE.test(file)) return whereNamedInBytes(bytes);
-    return whereNamed(bytes.toString('utf8')) ?? whereNamed(bytes.toString('latin1'), namedInBytes);
+    if (BINARY_FILE.test(file)) return whereNamedInBytes(bytes) ?? whereNamedInData(bytes.toString('latin1'));
+    const text = bytes.toString('utf8');
+    return whereNamed(text) ?? whereNamed(bytes.toString('latin1'), namedInBytes) ?? whereNamedInData(text);
   } catch (error) {
     throw new Error(`${masked(file)}: ${masked((error as Error).message)}`);
   }
@@ -903,6 +922,10 @@ test('the check for the operator finds his name with hidden characters, inside m
       () => '\u0430',
     ),
     written(FAMILY, 1, () => '\u04cf'),
+    // A look-alike letter with a mark: a Greek iota with tonos, a Cyrillic yi, a Greek Alpha with tonos.
+    written(FAMILY, 1, () => '\u03af'),
+    written(FAMILY, 1, () => '\u0457'),
+    written(FAMILY, 0, () => '\u0386'),
     // Joined into a handle, either way round, and among other words.
     GIVEN + FAMILY,
     SHORT + familyLower,
@@ -930,6 +953,7 @@ test('the check for the operator finds his name with hidden characters, inside m
     `${FAMILY.slice(0, 3)}&aacute;ra`,
     [...`${FAMILY}ra`].map((letter) => String.fromCodePoint(letter.codePointAt(0)! + 0xfee0)).join(''),
     written(`${FAMILY}ra`, 0, () => '\u0410'),
+    written(`${FAMILY}ra`, 1, () => '\u03af'),
     `${cut(GIVEN.slice(0, 6), 3, '<b>')}</b>`,
     `${cut(GIVEN, 5, '&shy;')}s`,
     // Parted by an element that breaks the text.
@@ -990,6 +1014,7 @@ test('a report of where the operator is named masks his name, and finds where it
     '**********, ******* and ******.',
     'the text masked',
   );
+  expectReport(masked(written(`${FAMILY}ra`, 1, () => '\u0457')), '******', 'the text masked');
   expectReport(masked('MDXplora team, main lab'), 'MDXplora team, main lab', 'the text masked');
 });
 
@@ -1078,6 +1103,13 @@ test('a report never shows part of his name, wherever the text around him is cut
           Buffer.from(`http://ns.adobe.com/xap/1.0/\0<dc:creator>${referenced} ${FAMILY}</dc:creator>`),
         ]),
       ],
+      // A PNG in a data: address in a page, with his name in its text.
+      [
+        'inline.html',
+        Buffer.from(
+          `<img alt="" src="data:image/png;base64,${png(['tEXt', Buffer.from(`Author\0${OPERATOR}`, 'latin1')]).toString('base64')}">`,
+        ),
+      ],
     ];
     for (const [name, content] of files) {
       writeFileSync(join(dir, name), content);
@@ -1159,6 +1191,15 @@ test('the check for the operator finds his name in the bytes of an image or a fo
     whereNamedInBytes(Buffer.from(`Notes by ${OPERATOR}.`, 'utf16le')),
     'his name at byte 18, written "********", in "Notes by ******** ****."',
   );
+  // An image in a data: address, written in base64, which the check of text does not read, is read as a file's bytes.
+  const inline = (image: Buffer) =>
+    `<p>Our team.</p>\n<img alt="" src="data:image/png;base64,${image.toString('base64')}">`;
+  expect(namedIn(inline(png(['tEXt', author])))).toBeUndefined();
+  expectReport(
+    whereNamedInData(inline(png(['tEXt', author]))),
+    /^his name at byte 23, written "\*{8}", in ".*", in the data: address on line 2$/,
+  );
+  expectReport(whereNamedInData(inline(png(['tEXt', Buffer.from('Software\0MDXplora')]))), undefined);
   // Text a PNG holds compressed, in a zTXt or iTXt chunk, or in its colour profile, which its bytes do not show.
   const compressed = (file: Buffer) => {
     expect(namedInBytes(file.toString('latin1')), 'named in the bytes as they are').toBeUndefined();
@@ -1285,17 +1326,18 @@ test('the operator is named on the privacy page, and nowhere else', async ({ req
     const [head, body] = html.split(/<\/head>/i);
     expect(body, `${shown} has a head and a body`).toBeDefined();
     // The head holds the metadata, the structured data and the link preview image's alt text.
-    expect(whereNamed(head), `${shown}: metadata`).toBeUndefined();
+    expect(whereNamed(head) ?? whereNamedInData(head), `${shown}: metadata`).toBeUndefined();
     if (path === '/privacy/')
       expect(body.includes(`${OPERATOR} is responsible for the personal data`), `${shown} names its controller`).toBe(
         true,
       );
-    else expect(whereNamed(body), shown).toBeUndefined();
+    else expect(whereNamed(body) ?? whereNamedInData(body), shown).toBeUndefined();
     // Every stylesheet the page links to, wherever it is served from. Styles inlined in the page are read above.
     for (const href of stylesheetsOf(html)) {
       const sheet = await request.get(new URL(href, response.url()).href);
       expect(sheet.ok(), masked(`${path}: ${href}`)).toBe(true);
-      expect(whereNamed(await sheet.text()), masked(`${path}: ${href}`)).toBeUndefined();
+      const css = await sheet.text();
+      expect(whereNamed(css) ?? whereNamedInData(css), masked(`${path}: ${href}`)).toBeUndefined();
     }
   }
   // Every file of the build, as it is served: the pages, the sitemaps, the stylesheets and any script, the icons, the
@@ -2017,9 +2059,9 @@ for (const { label, javaScriptEnabled, fontSize, narrow } of largerText) {
           const header = document.querySelector('.site-header')!;
           if (!el || header.contains(el) || el === document.body || el.matches('.skip-link')) return null;
           const under = el.getBoundingClientRect().top < header.getBoundingClientRect().bottom - 1;
-          return under ? el.outerHTML.slice(0, 60) : null;
+          return under ? el.outerHTML : null;
         });
-        if (name) hidden.push(masked(name));
+        if (name) hidden.push(masked(name).slice(0, 60));
       }
       expect(hidden).toEqual([]);
     });
