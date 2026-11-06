@@ -56,22 +56,43 @@ export type Finder = (text: string, whole?: boolean) => Found | undefined;
 // the short form of his given name, one of which every way of writing either holds.
 const HOLDS = new RegExp(`(?=${spelled(FAMILY)}|${spelled(SHORT)})`, 'g');
 const BACK = GIVEN.length + 2;
-// A run of base64, such as an integrity or policy hash or the data of a data: address, is not read: drawn at random,
-// its letters and digits spell his family name between a capital or a digit about once in 5 MB. A run is twenty or
-// more of its characters, a digit, + or / among them, that change between capitals, small letters and the rest at
-// least twice in five places, as a word, a name or a handle written in them hardly ever does.
-const BASE64 = /[A-Za-z0-9+/]{20,}/g;
+// A run of base64 is not read where base64 is written: drawn at random, its letters and digits spell his family name
+// between a capital or a digit about once in 5 MB. That is the value of an integrity or policy hash, of the length its
+// digest takes, the data of a data: address, after base64,, and any other run of twenty or more of its characters. A /
+// parts the segments of a path, as in a link to a commit, so in any other run each segment between two is judged on
+// its own. A run or segment is base64 when a digit, + or / is among its characters, which change between capitals,
+// small letters and the rest at least twice in five places, as a word, a name or a handle written in them hardly ever
+// does.
+const BASE64 = new RegExp(
+  [
+    '(?<=sha256-)[A-Za-z0-9+/]{43}=',
+    '(?<=sha384-)[A-Za-z0-9+/]{64}(?![A-Za-z0-9+/=])',
+    '(?<=sha512-)[A-Za-z0-9+/]{86}==',
+    '(?<=base64,)[A-Za-z0-9+/]+=*',
+    '([A-Za-z0-9+/]{20,})',
+  ].join('|'),
+  'g',
+);
 const sortOf = (char: string) => (char >= 'a' && char <= 'z' ? 1 : char >= 'A' && char <= 'Z' ? 2 : 0);
 function isBase64(run: string): boolean {
+  run = run.replace(/=+$/, '');
   if (!/[0-9+/]/.test(run)) return false;
   let changes = 0;
   for (let i = 1; i < run.length; i++) if (sortOf(run[i]) !== sortOf(run[i - 1])) changes++;
   return changes >= 0.4 * (run.length - 1);
 }
+// Where a text is base64 and not read, each as its start and end.
+function base64In(text: string): [number, number][] {
+  const runs: [number, number][] = [];
+  for (const { 0: run, 1: other, index } of text.matchAll(BASE64))
+    for (const part of other === undefined ? [{ 0: run, index: 0 }] : run.matchAll(/[^/]+/g))
+      if (isBase64(part[0])) runs.push([index + part.index, index + part.index + part[0].length]);
+  return runs;
+}
 function found(text: string, whole = false): Found | undefined {
   const holds = [...text.matchAll(HOLDS)].map((m) => m.index);
   if (!holds.length) return undefined;
-  const runs = [...text.matchAll(BASE64)].filter(([run]) => isBase64(run)).map((m) => [m.index, m.index + m[0].length]);
+  const runs = base64In(text);
   const read = holds.filter((at) => !runs.some(([start, end]) => at >= start && at < end));
   for (const [pattern, kind] of whole ? FOUND_WHOLE : FOUND)
     for (const at of read)

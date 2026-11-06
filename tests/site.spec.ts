@@ -829,6 +829,10 @@ test('the check for the operator finds his name written with references, percent
     expect(namedIn(text), example(text, i)).toBeUndefined();
 });
 
+// A commit's full hash, and base64 as a hash or a data: address writes it, of the length given, that starts as given.
+const COMMIT = '8f3a2c1e9b7d4a6f0c2e5b8d1a3f6c9e2b4d7a0f';
+const filled = (start: string, length: number) => start + 'x7Kp2Lm9Qz4+Wd8'.repeat(10).slice(0, length - start.length);
+
 test('the check for the operator finds his name with hidden characters, inside markup or in look-alike letters', () => {
   for (const [i, text] of [
     // A soft hyphen, as a reference and as it is; a zero width space, as it is and as references.
@@ -909,6 +913,13 @@ test('the check for the operator finds his name with hidden characters, inside m
     `${GIVEN}${FAMILY}Lab`,
     // A name in letters and digits much as base64 is written, but not as it is.
     `const ${givenLower}${FAMILY}Lab2026Site = 1;`,
+    // In a link whose path goes on in letters and digits, as to a commit, a file at a commit or a user's page.
+    `See https://github.com/${SHORT}${familyLower}/site/commit/8f3a2c1 for the first version.`,
+    `https://github.com/${SHORT}${familyLower}/site/blob/${COMMIT}/README.md`,
+    `https://raw.githubusercontent.com/${SHORT}${familyLower}/site/${COMMIT}/README.md`,
+    `/u/${SHORT}/A1b2C3d4E5f6G7`,
+    // A segment between two / outside a hash or a data: address.
+    `"integrity": "sha1-q8Rz3/${FAMILY}/7Jk2Lm9Pq+Xw4Ty6B="`,
   ].entries())
     expect(namedIn(text), example(text, i)).toBeDefined();
   for (const [i, text] of [
@@ -939,6 +950,11 @@ test('the check for the operator finds his name with hidden characters, inside m
     `"integrity": "sha512-q8Rz3${FAMILY}7Jk2Lm9Pq+Xw4Ty6Bv1Nc0Ds5Fg8Hj2Kl3Zx7Cv4Bn6Mq0Wp5Ee1Rt8Yu3Io=="`,
     `script-src 'sha256-Jx9k${FAMILY}Qz3Lm8Pq2Rt7Vw5Yb1Nc4Df6Gh0Kj=';`,
     `url(data:font/woff2;base64,d09GMgABAAAAA3x+${FAMILY}/k2Lm9Pq4Xw7Ty1Bv6Nc0Ds5Fg8Hj)`,
+    // And where a / parts it, in a hash of the length its digest takes, or in a data: address.
+    `"integrity": "sha512-${filled(`q8Rz3/${FAMILY}/7Jk2`, 86)}=="`,
+    `integrity="sha384-${filled(`Lm8/${FAMILY}/Pq2`, 64)}"`,
+    `script-src 'sha256-${filled(`Jx9k/${FAMILY}/Qz3`, 43)}=';`,
+    `url(data:image/png;base64,iVBORw0KGgo/${FAMILY}/k2Lm9Pq4Xw7Ty1Bv6Nc0)`,
   ].entries())
     expect(namedIn(text), example(text, i)).toBeUndefined();
 });
