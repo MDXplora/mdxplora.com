@@ -23,7 +23,7 @@
 //
 // Not read: xlink:href, which svg once used for links.
 //
-// Where parse5 8.0.1 and Chromium differ, as far as is known and it matters here. Check this list again when parse5 is
+// Where parse5 8.1.0 and Chromium differ, as far as is known and it matters here. Check this list again when parse5 is
 // updated.
 // - Inside a select, parse5 drops each start tag other than option, optgroup, hr, script and template (input, keygen,
 //   textarea and select end the select first), while Chromium keeps those elements. So an HTML select whose source
@@ -31,8 +31,6 @@
 //   select, or as the start of an option, optgroup, hr, script or template, is reported: such content is not supported
 //   here, and the markup must be changed. This errs towards reporting, so "<" in an attribute value there is reported
 //   too. A select inside a template is read the same way.
-// - In <svg><desc><b></desc></svg></b></desc><style>...</style>, parse5 reads the style as text and Chromium as svg, so
-//   a link in it is not checked. No parse error shows this, so it is not reported.
 //
 // A page whose parse ends inside a comment, a tag, a CDATA section or the text of an element that holds only text, or
 // that has a plaintext element, is reported: what follows is then read as text, and on a built page that is a fault. So

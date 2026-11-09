@@ -1022,6 +1022,17 @@ test('a select that holds a tag other than an option is reported, so its markup 
     expect(run.output).toContain(`${name}/index.html \u2192 a select holds`);
 });
 
+test('a link in svg after a desc whose end tags are out of order is checked, as Chromium reads it as svg', () => {
+  // parse5 8.0.1 read this style as text, so the link in it went unchecked; from 8.1.0 it reads it as Chromium does.
+  const run = checkLinks({
+    'index.html': html(
+      '<h1 id="top">Home</h1><svg><desc><b></desc></svg></b></desc><style><a href="/nope/">x</a></style>',
+    ),
+  });
+  expect(run.status, run.output).toBe(1);
+  expect(run.reported).toEqual(['/nope/']);
+});
+
 test('a select inside a template is checked too', () => {
   const run = checkLinks({
     'index.html': html(
