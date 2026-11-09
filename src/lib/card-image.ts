@@ -44,6 +44,8 @@ function layout(card: Card): Node {
     {
       width: WIDTH,
       height: HEIGHT,
+      // The padding inside the image's size, as satori 0.35 lays it out anyway; later ones put it outside.
+      boxSizing: 'border-box',
       flexDirection: 'column',
       justifyContent: 'space-between',
       padding: `${PAD_Y}px ${PAD_X}px`,

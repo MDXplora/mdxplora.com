@@ -21,6 +21,9 @@ updates:
       # Kept at 0.7.5 by an override: satori cannot read fonts with 0.8, so every preview image shows boxes.
       - dependency-name: fflate
         versions: ['>= 0.8.0']
+      # Pinned at 0.35.1: 0.35.2 stops the build, and 0.63 draws the preview images differently (see DEVELOPMENT.md).
+      - dependency-name: satori
+        versions: ['>= 0.35.2']
     open-pull-requests-limit: 5
 
   - package-ecosystem: github-actions

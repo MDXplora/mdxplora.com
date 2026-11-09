@@ -39,6 +39,8 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
+          # The newest Node 22, not the runner's cached one, which Astro may refuse (see package.json engines).
+          check-latest: true
           cache: npm
 
       - run: npm ci

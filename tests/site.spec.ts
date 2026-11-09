@@ -331,6 +331,25 @@ test('Dependabot leaves fflate on 0.7 while the override holds it there', () => 
   }
 });
 
+test('package.json asks for at least the Node that Astro asks for', () => {
+  const floor = (range: string) => (range.match(/^>=\s*(\d+)\.?(\d+)?\.?(\d+)?$/) ?? []).slice(1, 4).map(Number);
+  const ours = floor(JSON.parse(readFileSync('package.json', 'utf8')).engines.node);
+  const astro = floor(JSON.parse(readFileSync('node_modules/astro/package.json', 'utf8')).engines.node);
+  expect(astro, 'astro engines.node is read as ">=x.y.z"').toHaveLength(3);
+  const parts = (version: number[]) => [0, 1, 2].map((i) => version[i] || 0);
+  const [a, b] = [parts(ours), parts(astro)];
+  const compared = a.map((n, i) => n - b[i]).find((d) => d !== 0) ?? 0;
+  expect(compared, `package.json engines.node ${a.join('.')} against astro's ${b.join('.')}`).toBeGreaterThanOrEqual(0);
+});
+
+test('Dependabot leaves satori on 0.35.1 while package.json pins it there', () => {
+  const pinned = JSON.parse(readFileSync('package.json', 'utf8')).devDependencies.satori;
+  const dependabot = readFileSync('.github/dependabot.yml', 'utf8');
+  if (pinned === '0.35.1') {
+    expectText(dependabot, /- dependency-name: satori\n\s+versions: \['>= 0\.35\.2'\]/, '.github/dependabot.yml');
+  }
+});
+
 test('a chosen theme is remembered on the next page', async ({ page }) => {
   await page.goto('/');
   const before = await page.locator('html').getAttribute('data-theme');

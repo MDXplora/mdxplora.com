@@ -5,7 +5,7 @@ for, is in the [README](README.md).
 
 ## Working on the site
 
-Needs Node 22.
+Needs Node 22.23.4 or later, which Astro asks for.
 
 ```bash
 npm ci
@@ -37,6 +37,11 @@ A page's card title must match its headline; a browser test checks it. To previe
 The image renderer, satori, asks for `fflate` 0.7.3, which has a moderate advisory; `package.json` gives it 0.7.5, the
 fixed release with the same interface. Do not move it to `fflate` 0.8: satori passes 0.7's output buffer, which 0.8 reads
 as options, so every letter became a placeholder box. The build stops if the fonts cannot be read.
+
+satori itself is pinned at 0.35.1, and Dependabot leaves it there. 0.35.2 stops the build (`__dirname is not defined`
+in an ES module). 0.63 puts an element's padding outside its width and height unless it is `border-box`, as the card's
+outer box now is; even so its letters differ slightly from 0.35.1's. Move it by hand, and compare `dist/og/*.png`
+before and after.
 
 ## Banned terms
 
